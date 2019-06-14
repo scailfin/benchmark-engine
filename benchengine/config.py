@@ -10,17 +10,17 @@ import os
 the application.
 """
 # Base Url for the engine API
-ENV_APIURL = 'benchengine_API_BASEURL'
+ENV_APIURL = 'BENCHENGINE_API_BASEURL'
 # Base directory to store uploaded files and submission results
-ENV_BASEDIR = 'benchengine_BASEDIR'
+ENV_BASEDIR = 'BENCHENGINE_BASEDIR'
 # Connect string for the underlying database
-ENV_DATABASE = 'benchengine_DATABASE'
+ENV_DATABASE = 'BENCHENGINE_DATABASE'
 # Timeperiod for which an API key is valid
-ENV_LOGIN_TIMEOUT = 'benchengine_LOGIN_TIMEOUT'
+ENV_LOGIN_TIMEOUT = 'BENCHENGINE_LOGIN_TIMEOUT'
 # Path to file containing the database schema (for db_init)
-ENV_SCHEMA_FILE = 'benchengine_SCHEMA_FILE'
+ENV_SCHEMA_FILE = 'BENCHENGINE_SCHEMA_FILE'
 # Name of the API instance
-ENV_SERVICE_NAME = 'benchengine_SERVICE_NAME'
+ENV_SERVICE_NAME = 'BENCHENGINE_SERVICE_NAME'
 
 """Default values for environment variables."""
 DEFAULT_APIURL = 'http://localhost:5000/benchmark-engine/api/v1'
