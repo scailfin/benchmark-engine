@@ -1,0 +1,16 @@
+ServiceDescriptor:
+- self
+- users:login
+- users:logout
+- benchmarks:list
+
+
+UserLogin:
+- service
+- user:logout
+
+
+
+UserRegister:
+- user:login
+- user:logout

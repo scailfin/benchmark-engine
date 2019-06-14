@@ -1,0 +1,13 @@
+Need to verify that:
+
+- user is member of team
+- team can access file
+- team is subscribed to competition
+
+Need to be:
+- team owner to delete team
+
+
+Who can (OR is it possible at all):
+- withdraw a team from a competition
+- delete a team submission

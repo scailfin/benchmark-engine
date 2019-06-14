@@ -1,0 +1,1 @@
+include resources/db/schema.sql
