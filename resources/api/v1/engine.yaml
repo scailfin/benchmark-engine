@@ -318,10 +318,13 @@ definitions:
           required:
           - id
           - name
+          - type
           properties:
             id:
               type: string
             name:
+              type: string
+            type:
               type: string
       runs:
         type: array

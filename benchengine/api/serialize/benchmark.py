@@ -94,7 +94,8 @@ class BenchmarkSerializer(Serializer):
         return {
             labels.SCHEMA: [{
                     labels.ID: c.identifier,
-                    labels.NAME: c.name
+                    labels.NAME: c.name,
+                    labels.DATA_TYPE: c.data_type
                 } for c in benchmark.template.schema.columns
             ],
             labels.RUNS: runs

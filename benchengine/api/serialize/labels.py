@@ -1,6 +1,7 @@
 """Define common labels that are used on resource serializations."""
 
 # Common resource labels
+DATA_TYPE = 'type'
 ID = 'id'
 NAME = 'name'
 STATE = 'state'
