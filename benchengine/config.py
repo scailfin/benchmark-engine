@@ -24,7 +24,6 @@ ENV_SERVICE_NAME = 'BENCHENGINE_SERVICE_NAME'
 
 """Default values for environment variables."""
 DEFAULT_APIURL = 'http://localhost:5000/benchmark-engine/api/v1'
-DEFAULT_BASEDIR = '.rob'
 # By default an API key is valid for 4 hours
 DEFAULT_LOGIN_TIMEOUT = 4 * 60 * 60
 # Path to the default schema file. CAUTION! At this point it is assumed that the
@@ -46,7 +45,7 @@ UPLOAD_DIR = 'files'
 
 def get_apiurl():
     """Get base Url for API resources. If the environment variable
-    'benchengine_API_BASEURL' is not set or empty the result will be None.
+    'BENCHENGINE_API_BASEURL' is not set or empty the result will be None.
 
     Returns
     -------
@@ -57,14 +56,14 @@ def get_apiurl():
 
 def get_base_dir():
     """Get base directory for uploaded and downloaded files from the environment
-    variable 'benchengine_BASEDIR'. If the variable is not set the default
-    value is returned.
+    variable 'BENCHENGINE_BASEDIR'. If the variable is not set the default
+    value is the current working directory.
 
     Returns
     -------
     string
     """
-    return os.environ.get(ENV_BASEDIR, DEFAULT_BASEDIR)
+    return os.path.join(os.environ.get(ENV_BASEDIR, '.'), '.rob')
 
 
 def get_database():
@@ -84,7 +83,7 @@ def get_login_timeout():
     """Get the period (in seconds) for which an API key is valid after it has
     been assigned to a user at login.
 
-    If the value of the respective environment variable benchengine_LOGIN_TIMEOUT
+    If the value of the respective environment variable BENCHENGINE_LOGIN_TIMEOUT
     is not set or cannot be converted to an integer the default value is
     returned.
 
@@ -129,7 +128,7 @@ def get_template_dir():
     """Get directory that is used by the template repository to maintain the
     workflow templates for benchmarks. This directory is a sub-folder of the
     base directory that is referenced by the environment variable
-    'benchengine_BASEDIR'.
+    'BENCHENGINE_BASEDIR'.
 
     Returns
     -------
@@ -142,7 +141,7 @@ def get_upload_dir():
     """Get directory that is used by the API to maintain files that are uploaded
     by users as input to benchmark runs. This directory is a sub-folder of the
     base directory that is referenced by the environment variable
-    'benchengine_BASEDIR'.
+    'BENCHENGINE_BASEDIR'.
 
     Returns
     -------
