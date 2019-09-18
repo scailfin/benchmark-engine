@@ -1,3 +1,11 @@
+# This file is part of the Reproducible Open Benchmarks for Data Analysis
+# Platform (ROB).
+#
+# Copyright (C) 2019 NYU.
+#
+# ROB is free software; you can redistribute it and/or modify it under the
+# terms of the MIT License; see LICENSE file for more details.
+
 """The API engine is a wrapper around the different system resources that
 constitue the benchmark engine. The componets of the engine are the (i) user
 manager, (ii) team manager, (iii) bechmark repository, and (iv) thebenchmark

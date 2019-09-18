@@ -1,9 +1,15 @@
+# This file is part of the Reproducible Open Benchmarks for Data Analysis
+# Platform (ROB).
+#
+# Copyright (C) 2019 NYU.
+#
+# ROB is free software; you can redistribute it and/or modify it under the
+# terms of the MIT License; see LICENSE file for more details.
+
 """Test functionality of the benchmark repository."""
 
 import os
-import shutil
-
-from unittest import TestCase
+import pytest
 
 from benchengine.benchmark.repo import BenchmarkRepository
 from benchengine.db import DatabaseDriver
@@ -13,50 +19,43 @@ import benchengine.config as config
 import benchengine.error as err
 
 
-TEMPLATE_DIR = './tests/files/templates/helloworld'
-TMP_DIR = './tests/files/.tmp'
-CONNECT = 'sqlite:{}/test.db'.format(TMP_DIR)
+DIR = os.path.dirname(os.path.realpath(__file__))
+TEMPLATE_DIR = os.path.join(DIR, '../.files/templates/helloworld')
 
 
-
-class TestBenchmarkRepository(TestCase):
+class TestBenchmarkRepository(object):
     """Test creating and maintaining benchmarks."""
-    def setUp(self):
-        if os.path.isdir(TMP_DIR):
-            shutil.rmtree(TMP_DIR)
-        os.makedirs(TMP_DIR)
-        """Create a fresh database."""
-        DatabaseDriver.init_db(connect_string=CONNECT)
-        self.con = DatabaseDriver.connect(connect_string=CONNECT)
-        os.environ[config.ENV_BASEDIR] = os.path.abspath(TMP_DIR)
+    def init(self, base_dir):
+        """Initialize the BASEDIR environment variable. Create a fresh database
+        and return an open connection.
+        """
+        os.environ[config.ENV_BASEDIR] = os.path.abspath(str(base_dir))
+        connect_string = 'sqlite:{}/auth.db'.format(str(base_dir))
+        DatabaseDriver.init_db(connect_string=connect_string)
+        return DatabaseDriver.connect(connect_string=connect_string)
 
-    def tearDown(self):
-        """Close connection and remove database file."""
-        self.con.close()
-        if os.path.isdir(TMP_DIR):
-            shutil.rmtree(TMP_DIR)
-
-    def test_add_benchmark(self):
+    def test_add_benchmark(self, tmpdir):
         """Test adding new benchmarks."""
         # Add with minimal information
-        repo = BenchmarkRepository(con=self.con)
+        con = self.init(tmpdir)
+        repo = BenchmarkRepository(con=con)
         bdesc = repo.add_benchmark(
             name='My benchmark',
             src_dir=TEMPLATE_DIR
         )
-        self.assertEqual(bdesc.name, 'My benchmark')
-        self.assertFalse(bdesc.has_description())
-        self.assertFalse(bdesc.has_instructions())
+        assert bdesc.name == 'My benchmark'
+        assert not bdesc.has_description()
+        assert not bdesc.has_instructions()
         # Ensure that a benchmark result table has been created
         table_name = bm.PREFIX_RESULT_TABLE + bdesc.identifier
-        self.con.execute('SELECT * FROM ' + table_name)
-        repo = BenchmarkRepository(con=self.con)
+        con.execute('SELECT * FROM ' + table_name)
+        repo = BenchmarkRepository(con=con)
         bmark = repo.get_benchmark(bdesc.identifier)
-        self.assertEqual(bmark.identifier, bdesc.identifier)
-        self.assertEqual(bmark.name, 'My benchmark')
-        self.assertFalse(bmark.has_description())
-        self.assertFalse(bmark.has_instructions())
-        repo = BenchmarkRepository(con=self.con, template_store=repo.template_store)
+        assert bmark.identifier == bdesc.identifier
+        assert bmark.name == 'My benchmark'
+        assert not bmark.has_description()
+        assert not bmark.has_instructions()
+        repo = BenchmarkRepository(con=con, template_store=repo.template_store)
         # Add benchmark with full information
         bdesc = repo.add_benchmark(
             name='My better benchmark',
@@ -64,72 +63,74 @@ class TestBenchmarkRepository(TestCase):
             instructions='Long instructions',
             src_dir=TEMPLATE_DIR
         )
-        self.assertEqual(bdesc.name, 'My better benchmark')
-        self.assertTrue(bdesc.has_description())
-        self.assertEqual(bdesc.description, 'Short description')
-        self.assertTrue(bdesc.has_instructions())
-        self.assertEqual(bdesc.instructions, 'Long instructions')
+        assert bdesc.name == 'My better benchmark'
+        assert bdesc.has_description()
+        assert bdesc.description == 'Short description'
+        assert bdesc.has_instructions()
+        assert bdesc.instructions == 'Long instructions'
         bmark = repo.get_benchmark(bdesc.identifier)
-        self.assertEqual(bmark.name, 'My better benchmark')
-        self.assertTrue(bmark.has_description())
-        self.assertEqual(bmark.description, 'Short description')
-        self.assertTrue(bmark.has_instructions())
-        self.assertEqual(bmark.instructions, 'Long instructions')
+        assert bmark.name == 'My better benchmark'
+        assert bmark.has_description()
+        assert bmark.description == 'Short description'
+        assert bmark.has_instructions()
+        assert bmark.instructions == 'Long instructions'
         # Errors are raised if an attempt is made to add benchmarks with
         # duplicate or invalid names
-        with self.assertRaises(err.ConstraintViolationError):
+        with pytest.raises(err.ConstraintViolationError):
             repo.add_benchmark(name='My benchmark', src_dir=TEMPLATE_DIR)
-        with self.assertRaises(err.ConstraintViolationError):
+        with pytest.raises(err.ConstraintViolationError):
             repo.add_benchmark(name=None, src_dir=TEMPLATE_DIR)
-        with self.assertRaises(err.ConstraintViolationError):
+        with pytest.raises(err.ConstraintViolationError):
             repo.add_benchmark(name=' ', src_dir=TEMPLATE_DIR)
-        with self.assertRaises(err.ConstraintViolationError):
+        with pytest.raises(err.ConstraintViolationError):
             repo.add_benchmark(name='a' * 256, src_dir=TEMPLATE_DIR)
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             repo.add_benchmark(name='A benchmark')
 
-    def test_delete_benchmark(self):
+    def test_delete_benchmark(self, tmpdir):
         """Test deleting a benchmarks from the repository"""
-        repo = BenchmarkRepository(con=self.con)
+        con = self.init(tmpdir)
+        repo = BenchmarkRepository(con=con)
         bdesc_1 = repo.add_benchmark(
             name='First',
             src_dir=TEMPLATE_DIR
         )
-        self.assertEqual(len(repo.list_benchmarks()), 1)
+        assert len(repo.list_benchmarks()) == 1
         bdesc_2 = repo.add_benchmark(
             name='Second',
             src_dir=TEMPLATE_DIR
         )
-        self.assertEqual(len(repo.list_benchmarks()), 2)
+        assert len(repo.list_benchmarks()) == 2
         bdesc_3 = repo.add_benchmark(
             name='Third',
             src_dir=TEMPLATE_DIR
         )
-        self.assertEqual(len(repo.list_benchmarks()), 3)
+        assert len(repo.list_benchmarks()) == 3
         names = [bmark.name for bmark in repo.list_benchmarks()]
         for name in ['First', 'Second', 'Third']:
-            self.assertTrue(name in names)
+            assert name in names
         repo.delete_benchmark(bdesc_2.identifier)
-        self.assertEqual(len(repo.list_benchmarks()), 2)
+        assert len(repo.list_benchmarks()) == 2
         names = [bmark.name for bmark in repo.list_benchmarks()]
-        self.assertFalse('Second' in names)
+        assert not 'Second' in names
         for name in ['First', 'Third']:
-            self.assertTrue(name in names)
+            assert name in names
         # Accessing an unknown benchmark will raise an error
-        with self.assertRaises(err.UnknownBenchmarkError):
+        with pytest.raises(err.UnknownBenchmarkError):
             repo.get_benchmark(bdesc_2.identifier)
         repo.delete_benchmark(bdesc_1.identifier)
-        self.assertEqual(len(repo.list_benchmarks()), 1)
+        assert len(repo.list_benchmarks()) == 1
         repo.delete_benchmark(bdesc_3.identifier)
-        self.assertEqual(len(repo.list_benchmarks()), 0)
+        assert len(repo.list_benchmarks()) == 0
         # Deleting an unknown benchmark will raise an error
-        with self.assertRaises(err.UnknownBenchmarkError):
+        with pytest.raises(err.UnknownBenchmarkError):
             repo.delete_benchmark(bdesc_1.identifier)
 
-    def test_insert_results(self):
+    def test_insert_results(self, tmpdir):
         """Test inserting run results for a benchmark."""
         # Add with minimal information
-        repo = BenchmarkRepository(con=self.con)
+        con = self.init(tmpdir)
+        repo = BenchmarkRepository(con=con)
         benchmark = repo.add_benchmark(
             name='My benchmark',
             src_dir=TEMPLATE_DIR
@@ -139,14 +140,9 @@ class TestBenchmarkRepository(TestCase):
         benchmark.insert_results('RUN3', {'max_len': 3, 'avg_count': 3.1})
         table_name = bm.PREFIX_RESULT_TABLE + benchmark.identifier
         sql ='SELECT max_line FROM {} WHERE run_id = ?'.format(table_name)
-        rs = self.con.execute(sql, ('RUN1', )).fetchone()
-        self.assertEqual(rs['max_line'], 'R1')
-        rs = self.con.execute(sql, ('RUN3', )).fetchone()
-        self.assertIsNone(rs['max_line'])
-        with self.assertRaises(err.ConstraintViolationError):
+        rs = con.execute(sql, ('RUN1', )).fetchone()
+        assert rs['max_line'] == 'R1'
+        rs = con.execute(sql, ('RUN3', )).fetchone()
+        assert rs['max_line'] is None
+        with pytest.raises(err.ConstraintViolationError):
             benchmark.insert_results('RUN4', {'max_len': 4, 'max_line': 'R4'})
-
-
-if __name__ == '__main__':
-    import unittest
-    unittest.main()

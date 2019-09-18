@@ -2,4 +2,4 @@ future
 passlib
 python-dateutil
 pyyaml>=5.1
-benchmark-templates
+benchmark-templates>=0.2.0

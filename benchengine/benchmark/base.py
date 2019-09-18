@@ -1,3 +1,11 @@
+# This file is part of the Reproducible Open Benchmarks for Data Analysis
+# Platform (ROB).
+#
+# Copyright (C) 2019 NYU.
+#
+# ROB is free software; you can redistribute it and/or modify it under the
+# terms of the MIT License; see LICENSE file for more details.
+
 """Descriptors and handles for benchmarks. The benachmark descriptor contains
 information about benchmarks that is maintained in addition to the underlying
 workflow template. The benchmark handle extends the descriptor with a reference

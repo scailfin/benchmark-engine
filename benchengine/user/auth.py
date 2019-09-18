@@ -1,3 +1,11 @@
+# This file is part of the Reproducible Open Benchmarks for Data Analysis
+# Platform (ROB).
+#
+# Copyright (C) 2019 NYU.
+#
+# ROB is free software; you can redistribute it and/or modify it under the
+# terms of the MIT License; see LICENSE file for more details.
+
 """The authentication and authorization module contains methods to login and
 logout users, i.e., assigne and revoke API keys to users. The module Auth class
 in this module also contains the required methods to authorize that a given

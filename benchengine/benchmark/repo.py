@@ -1,3 +1,11 @@
+# This file is part of the Reproducible Open Benchmarks for Data Analysis
+# Platform (ROB).
+#
+# Copyright (C) 2019 NYU.
+#
+# ROB is free software; you can redistribute it and/or modify it under the
+# terms of the MIT License; see LICENSE file for more details.
+
 """The benchmark repository maintains information about benchmarks as well as
 the results of different benchmark runs. For each benchmark basic information is
 stored in the underlying database, together with the workflow template and the

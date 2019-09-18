@@ -1,9 +1,15 @@
+# This file is part of the Reproducible Open Benchmarks for Data Analysis
+# Platform (ROB).
+#
+# Copyright (C) 2019 NYU.
+#
+# ROB is free software; you can redistribute it and/or modify it under the
+# terms of the MIT License; see LICENSE file for more details.
+
 """Test functionality of the database driver."""
 
 import os
-import shutil
-
-from unittest import TestCase
+import pytest
 
 from benchengine.config import ENV_DATABASE
 from benchengine.db import DatabaseDriver
@@ -11,42 +17,21 @@ from benchengine.db import DatabaseDriver
 import benchengine.config as config
 
 
-DEFAULT_DATABASE_FILE = './benchengine.db'
-TMP_DIR = './tests/files/.tmp'
-
-
-class TestDatabaseDriver(TestCase):
+class TestDatabaseDriver(object):
     """Test functionality of the database driver to establish database
     connections.
     """
-    def setUp(self):
-        """Remove default database file and temporary directory if they exist.
-        """
-        self.tearDown()
-
-    def tearDown(self):
-        """Remove default database file and temporary directory if they exist.
-        """
-        if os.path.isdir(TMP_DIR):
-            shutil.rmtree(TMP_DIR)
-        if os.path.isfile(DEFAULT_DATABASE_FILE):
-            os.remove(DEFAULT_DATABASE_FILE)
-
     def test_connect_invalid_string(self):
         """Ensure that an exception is thrown if an invalid connections tring is
         provided to the driver.
         """
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             DatabaseDriver.connect('not a valid connect string')
 
-    def test_connect_sqlite(self):
+    def test_connect_sqlite(self, tmpdir):
         """Test connecting to SQLite3 database."""
-        # Create new subfolder for database file
-        if os.path.isdir(TMP_DIR):
-            shutil.rmtree(TMP_DIR)
-        os.makedirs(TMP_DIR)
         # Set the connect string
-        filename = '{}/my.db'.format(TMP_DIR)
+        filename = '{}/my.db'.format(str(tmpdir))
         connect_string = 'sqlite:{}'.format(filename)
         # Connect by passing the connect sting (clear environment first)
         if ENV_DATABASE in os.environ:
@@ -54,26 +39,24 @@ class TestDatabaseDriver(TestCase):
         con = DatabaseDriver.connect(connect_string=connect_string)
         self.validate_database(con, filename)
         # Make sure that database file has been deleted
-        self.assertFalse(os.path.isfile(filename))
+        assert not os.path.isfile(filename)
         # Repeat with the environment variable set
         os.environ[ENV_DATABASE] = connect_string
         con.close()
         con = DatabaseDriver.connect()
         self.validate_database(con, filename)
         connect_info = DatabaseDriver.info()
-        self.assertTrue(connect_info.startswith('sqlite3 @ '))
+        assert connect_info.startswith('sqlite3 @ ')
         os.environ[ENV_DATABASE] = 'unknown'
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             DatabaseDriver.info()
-        # Clean-up temp directory
-        shutil.rmtree(TMP_DIR)
         con.close()
 
-    def test_init_db(self):
+    def test_init_db(self, tmpdir):
         """Test initializing the database using the default database."""
         if ENV_DATABASE in os.environ:
             del os.environ[ENV_DATABASE]
-        filename = '{}/my.db'.format(TMP_DIR)
+        filename = '{}/my.db'.format(str(tmpdir))
         connect_string = 'sqlite:{}'.format(filename)
         os.environ[ENV_DATABASE] = connect_string
         # Call the init_db method to create all database tables
@@ -81,7 +64,7 @@ class TestDatabaseDriver(TestCase):
         # Connect to the database and ensure we can run a simple query without
         # and SQL error
         con = DatabaseDriver.connect()
-        self.assertIsNone(con.execute('SELECT * from team').fetchone())
+        assert con.execute('SELECT * from team').fetchone() is None
         con.close()
 
     def validate_database(self, con, filename):
@@ -92,10 +75,5 @@ class TestDatabaseDriver(TestCase):
         con.execute('CREATE TABLE t(id INTEGER NOT NULL)')
         con.close()
         # Make sure that the default database file was created (and clean up)
-        self.assertTrue(os.path.isfile(filename))
+        assert os.path.isfile(filename)
         os.remove(filename)
-
-
-if __name__ == '__main__':
-    import unittest
-    unittest.main()

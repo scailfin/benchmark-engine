@@ -64,8 +64,9 @@ CREATE TABLE benchmark_run(
     benchmark_id CHAR(32) NOT NULL,
     user_id CHAR(32) NOT NULL,
     state VARCHAR(8) NOT NULL,
-    started_at CHAR(26) NOT NULL,
-    finished_at CHAR(26) NOT NULL,
+    created_at CHAR(26) NOT NULL,
+    started_at CHAR(26),
+    ended_at CHAR(26),
     PRIMARY KEY(run_id)
 );
 
