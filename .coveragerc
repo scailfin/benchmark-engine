@@ -1,7 +1,7 @@
 [run]
 branch = true
 parallel = true
-source = benchengine
+source = robapi
 
 [report]
 show_missing = true

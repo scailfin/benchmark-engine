@@ -1,11 +1,10 @@
-# Reproducible Benchmarks for Data Analysis Engine - Changelog
+# API for Reproducible Open Benchmarks - Changelog
 
 ### 0.1.0 - 2019-06-14
 
 * Initial Version
 
 
-### 0.2.0 - 2019-08-29
+### 0.2.0 - (ongoing)
 
-* Move to pytest
-* Adjust to changes in benchmark-template 0.2.0
+* Rename package benchengine to robapi

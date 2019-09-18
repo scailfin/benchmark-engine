@@ -14,8 +14,7 @@ tests_require = [
     'coverage>=4.0',
     'pytest',
     'pytest-cov',
-    'tox',
-    'benchmark-multiprocess>=0.2.0'
+    'tox'
 ]
 
 
@@ -29,14 +28,13 @@ extras_require = {
 
 
 setup(
-    name='benchmark-engine',
+    name='benchmark-api',
     version='0.2.0',
-    description='Reproducible Benchmarks for Data Analysis Engine',
+    description='API for Reproducible Open Benchmarks',
     keywords='reproducibility benchmarks data analysis',
     license='MIT',
     packages=find_packages(exclude=('tests',)),
     include_package_data=True,
-    test_suite='nose.collector',
     extras_require=extras_require,
     tests_require=tests_require,
     install_requires=install_requires,

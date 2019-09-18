@@ -40,7 +40,7 @@ parameters:
       datatype: string
       defaultValue: 'Hello'
 results:
-    file: results/analytics.json
+    file: 'results/analytics.json'
     schema:
         - id: avg_count
           name: 'Avg. Characters per Line'
