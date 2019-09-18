@@ -112,7 +112,7 @@ class UserManager(object):
             self.con.commit()
         return UserHandle(identifier=user_id, name=user['name'])
 
-    def login(self, username, password):
+    def login_user(self, username, password):
         """Authorize a given user and assign an API key for them. If the user
         is unknown or the given credentials do not match those in the database
         an unknown user error is raised.
@@ -160,7 +160,7 @@ class UserManager(object):
         self.con.commit()
         return UserHandle(identifier=user_id, name=name, api_key=api_key)
 
-    def logout(self, api_key):
+    def logout_user(self, api_key):
         """Invalidate the given API key. This will logout the user that is
         associated with the key.
 
@@ -177,7 +177,7 @@ class UserManager(object):
         ------
         robapi.error.UnauthenticatedAccessError
         """
-        user = authenticate(con=self.con, api_key=api_key)
+        user = authenticate_user(con=self.con, api_key=api_key)
         self.con.execute('DELETE FROM user_key WHERE api_key = ?', (api_key,))
         self.con.commit()
         return UserHandle(identifier=user.identifier, name=user.name)
@@ -313,47 +313,6 @@ class UserManager(object):
         sql = 'DELETE FROM password_request WHERE request_id = ?'
         self.con.execute(sql, (request_id,))
         self.con.commit()
-
-
-# -- Authentication ------------------------------------------------------------
-
-def authenticate(con, api_key):
-    """Get the unique user identifier that is associated with the given
-    API key. Raises an error if the API key is not associated with
-    a valid login.
-
-    Parameters
-    ----------
-    con: DB-API 2.0 database connection
-        Connection to underlying database
-    api_key: string
-        Unique API access token assigned at login
-
-    Returns
-    -------
-    robapi.model.user.UserHandle
-
-    Raises
-    ------
-    robapi.error.UnauthenticatedAccessError
-    """
-    # Get information for user that that is associated with the API key
-    # together with the expiry date of the key. If the API key is unknown
-    # or expired raise an error.
-    sql = 'SELECT u.user_id, u.name, k.expires as expires '
-    sql += 'FROM api_user u, user_key k '
-    sql += 'WHERE u.user_id = k.user_id AND u.active = 1 AND k.api_key = ?'
-    user = con.execute(sql, (api_key,)).fetchone()
-    if user is None:
-        raise err.UnauthenticatedAccessError()
-    expires = dateutil.parser.parse(user['expires'])
-    if expires < dt.datetime.now():
-        raise err.UnauthenticatedAccessError()
-    return UserHandle(
-        identifier=user['user_id'],
-        name=user['name'],
-        api_key=api_key
-    )
 
 
 # -- Helper Methods ------------------------------------------------------------

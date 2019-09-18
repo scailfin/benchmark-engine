@@ -30,16 +30,16 @@ class TestUserManager(object):
         user = umanager.register_user('nouser@me.com', 'pwd1', verify=True)
         # Attempt to login will raise error
         with pytest.raises(err.UnknownUserError):
-            umanager.login('nouser@me.com', 'pwd1')
+            umanager.login_user('nouser@me.com', 'pwd1')
         # After activating the user login should succeed
         active_user = umanager.activate_user(user.identifier)
         assert active_user.identifier == user.identifier
         assert active_user.name == user.name
         assert active_user.api_key is None
-        user = umanager.login('nouser@me.com', 'pwd1')
+        user = umanager.login_user('nouser@me.com', 'pwd1')
         assert user.name == 'nouser@me.com'
         assert not user.api_key is None
-        user_id = auth.authenticate(con, user.api_key).identifier
+        user_id = auth.authenticate_user(con, user.api_key).identifier
         assert user.identifier == user_id
         # Activate the same user twice should not raise an error
         active_user = umanager.activate_user(user.identifier)
@@ -56,14 +56,14 @@ class TestUserManager(object):
         umanager = UserManager(con)
         reg_user = umanager.register_user('first.user@me.com', 'pwd1')
         assert reg_user.api_key is None
-        user_1 = umanager.login('first.user@me.com', 'pwd1')
+        user_1 = umanager.login_user('first.user@me.com', 'pwd1')
         assert user_1.name == 'first.user@me.com'
-        user_id_1 = auth.authenticate(con, user_1.api_key).identifier
+        user_id_1 = auth.authenticate_user(con, user_1.api_key).identifier
         assert user_1.identifier == user_id_1
         umanager.register_user('second.user@me.com', 'pwd2')
-        user_2 = umanager.login('second.user@me.com', 'pwd2')
+        user_2 = umanager.login_user('second.user@me.com', 'pwd2')
         assert user_2.name == 'second.user@me.com'
-        user_id_2 = auth.authenticate(con, user_2.api_key).identifier
+        user_id_2 = auth.authenticate_user(con, user_2.api_key).identifier
         assert user_2.identifier == user_id_2
         # Register user with existing email address raises error
         with pytest.raises(err.DuplicateUserError):
@@ -83,9 +83,9 @@ class TestUserManager(object):
         con = db.init_db(str(tmpdir)).connect()
         umanager = UserManager(con)
         umanager.register_user('first.user@me.com', 'pwd1')
-        user = umanager.login('first.user@me.com', 'pwd1')
+        user = umanager.login_user('first.user@me.com', 'pwd1')
         assert user.name == 'first.user@me.com'
-        user_id = auth.authenticate(con, user.api_key).identifier
+        user_id = auth.authenticate_user(con, user.api_key).identifier
         assert user.identifier == user_id
         request_id_1 = umanager.request_password_reset('first.user@me.com')
         assert not request_id_1 is None
@@ -98,10 +98,10 @@ class TestUserManager(object):
         # After resetting the password the previous API key for the user is
         # invalid
         with pytest.raises(err.UnauthenticatedAccessError):
-            auth.authenticate(con, user.api_key)
-        user = umanager.login('first.user@me.com', 'mypwd')
+            auth.authenticate_user(con, user.api_key)
+        user = umanager.login_user('first.user@me.com', 'mypwd')
         assert user.name == 'first.user@me.com'
-        user_id = auth.authenticate(con, user.api_key).identifier
+        user_id = auth.authenticate_user(con, user.api_key).identifier
         assert user.identifier == user_id
         # An error is raised when (i) trying to use a request for an unknown
         # user, (ii) a previously completed reset request, or (iii) an unknown
@@ -120,9 +120,9 @@ class TestUserManager(object):
         con = db.init_db(str(tmpdir)).connect()
         umanager = UserManager(con, login_timeout=1)
         umanager.register_user('first.user@me.com', 'pwd1')
-        user = umanager.login('first.user@me.com', 'pwd1')
+        user = umanager.login_user('first.user@me.com', 'pwd1')
         assert user.name == 'first.user@me.com'
-        user_id = auth.authenticate(con, user.api_key).identifier
+        user_id = auth.authenticate_user(con, user.api_key).identifier
         assert user.identifier == user_id
         # Hack: Manipulate the login_timeout value to similate timeout
         umanager.login_timeout = 1

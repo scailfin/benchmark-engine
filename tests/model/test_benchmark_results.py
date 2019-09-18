@@ -13,9 +13,9 @@ import pytest
 
 from passlib.hash import pbkdf2_sha256
 
-from robapi.model.benchmark.engine import BenchmarkEngine
-from robapi.model.benchmark.repo import BenchmarkRepository
-from robapi.model.benchmark.submission import SubmissionManager
+from robapi.model.engine import BenchmarkEngine
+from robapi.model.repo import BenchmarkRepository
+from robapi.model.submission import SubmissionManager
 from robtmpl.template.schema import SortColumn
 from robtmpl.template.repo.fs import TemplateFSRepository
 
@@ -26,8 +26,8 @@ import robtmpl.util as util
 
 
 DIR = os.path.dirname(os.path.realpath(__file__))
-TEMPLATE_DIR = os.path.join(DIR, '../../.files/templates/helloworld')
-TEMPLATE_WITHOUT_SCHEMA = os.path.join(DIR, '../../.files/templates/template.json')
+TEMPLATE_DIR = os.path.join(DIR, '../.files/templates/helloworld')
+TEMPLATE_WITHOUT_SCHEMA = os.path.join(DIR, '../.files/templates/template.json')
 
 
 USER_1 = util.get_unique_identifier()

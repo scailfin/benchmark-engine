@@ -23,7 +23,7 @@ class Serializer(object):
 
         Parameters
         ----------
-        urls: robapi.api.route.UrlFactory
+        urls: robapi.service.route.UrlFactory
             Factory for resource Urls
         """
         self.urls = urls

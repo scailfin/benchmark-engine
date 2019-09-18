@@ -64,7 +64,7 @@ def run_workflow(engine, template, submission_id, base_dir, values=None):
 
     Parameters
     ----------
-    engine: robapi.model.benchmark.engine.BenchmarkEngine
+    engine: robapi.model.engine.BenchmarkEngine
         Benchmark executionengine
     template: robtmpl.template.base.WorkflowTemplate
         Benchmark workflow template

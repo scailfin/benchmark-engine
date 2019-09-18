@@ -13,19 +13,19 @@ import os
 import pytest
 import sqlite3
 
-from robapi.model.benchmark.repo import BenchmarkHandle, BenchmarkRepository
+from robapi.model.repo import BenchmarkHandle, BenchmarkRepository
 from robapi.tests.repo import DictRepo
 from robtmpl.template.schema import ResultSchema
 from robtmpl.template.repo.fs import TemplateFSRepository
 
-import robapi.model.benchmark.base as base
+import robapi.model.base as base
 import robapi.error as err
 import robapi.tests.db as db
 
 
 DIR = os.path.dirname(os.path.realpath(__file__))
-TEMPLATE_DIR = os.path.join(DIR, '../../.files/templates/helloworld')
-TEMPLATE_WITHOUT_SCHEMA = os.path.join(DIR, '../../.files/templates/template.json')
+TEMPLATE_DIR = os.path.join(DIR, '../.files/templates/helloworld')
+TEMPLATE_WITHOUT_SCHEMA = os.path.join(DIR, '../.files/templates/template.json')
 
 
 """Fake template for descriptor initialization."""

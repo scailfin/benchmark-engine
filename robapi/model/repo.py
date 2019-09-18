@@ -13,10 +13,10 @@ the workflow template and the result files of individual workflow runs.
 
 import json
 
-from robapi.model.benchmark.result import ResultRanking
+from robapi.model.result import ResultRanking
 from robtmpl.template.schema import ResultSchema
 
-import robapi.model.benchmark.base as base
+import robapi.model.base as base
 import robapi.error as err
 import robtmpl.template.parameter.declaration as pd
 
@@ -54,7 +54,7 @@ class BenchmarkHandle(object):
             Text containing detailed instructions for benchmark participants
         template: robtmpl.template.base.WorkflowTemplate, optional
             Template for the associated workflow
-        repo: robapi.model.benchmark.repo.BenchmarkRepository, optional
+        repo: robapi.model.repo.BenchmarkRepository, optional
             Template repository to load the template on demand.
 
         Raises
@@ -110,7 +110,7 @@ class BenchmarkHandle(object):
 
         Returns
         -------
-        robapi.model.benchmark.result.ResultRanking
+        robapi.model.result.ResultRanking
 
         Raises
         ------
@@ -204,7 +204,7 @@ class BenchmarkRepository(object):
 
         Returns
         -------
-        robapi.model.benchmark.repo.BenchmarkHandle
+        robapi.model.repo.BenchmarkHandle
 
         Raises
         ------
@@ -289,7 +289,7 @@ class BenchmarkRepository(object):
 
         Returns
         -------
-        robapi.model.benchmark.repo.BenchmarkHandle
+        robapi.model.repo.BenchmarkHandle
 
         Raises
         ------
@@ -335,7 +335,7 @@ class BenchmarkRepository(object):
 
         Returns
         -------
-        robapi.model.benchmark.result.ResultRanking
+        robapi.model.result.ResultRanking
 
         Raises
         ------
@@ -367,7 +367,7 @@ class BenchmarkRepository(object):
 
         Returns
         -------
-        list(robapi.model.benchmark.repo.BenchmarkHandle)
+        list(robapi.model.repo.BenchmarkHandle)
         """
         sql = 'SELECT benchmark_id, name, description, instructions '
         sql += 'FROM benchmark '

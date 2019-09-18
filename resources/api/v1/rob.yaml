@@ -17,6 +17,10 @@ tags:
   description: "Benchmark workflow templates"
 - name: "submission"
   description: "User submissions for benchmarks"
+- name: "run"
+  description: "Workflow runs"
+- name: "file"
+  description: "Uploaded files for benchmark submissions"
 - name: "user"
   description: "Authenticate and register users"
 schemes:
@@ -93,8 +97,8 @@ paths:
     get:
       tags:
       - "benchmark"
-      summary: "Get benchmark leaderboard"
-      description: "Get full leaderboard for the given benchmark"
+      summary: "Get benchmark leader board"
+      description: "Get full leader board for the given benchmark"
       operationId: "benchmarkLeaderboard"
       produces:
       - "application/json"
@@ -118,10 +122,170 @@ paths:
 # ------------------------------------------------------------------------------
 # Submissions
 # ------------------------------------------------------------------------------
-  /benchmarks/{benchmarkId}/submissions/{submissionId}/run:
+  /benchmarks/{benchmarkId}/submissions:
     post:
       tags:
       - "submission"
+      summary: "Create submission"
+      description: "Create a new submission for a benchmark"
+      operationId: "createSubmission"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "api_key"
+        in: "header"
+        required: false
+        type: "string"
+      - in: "path"
+        name: "benchmarkId"
+        description: "Unique benchmark identifier"
+        required: true
+        type: string
+      - name: body
+        in: body
+        required: true
+        description: Submission name and members
+        schema:
+            type: object
+            required:
+            - name
+            properties:
+              name:
+                type: string
+              members:
+                type: array
+                items:
+                  type: string
+      responses:
+        200:
+          description: "Run state"
+          schema:
+            $ref: "#/definitions/SubmissionHandle"
+        400:
+          description: "Invalid submission statement"
+        403:
+          description: "Forbidden operation"
+        404:
+          description: "Unknown benchmark"
+  /submissions:
+    get:
+      tags:
+      - "submission"
+      summary: "List submissions"
+      description: "List all submissions that a user is a member of"
+      operationId: "listSubmissions"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "api_key"
+        in: "header"
+        required: false
+        type: "string"
+      responses:
+        200:
+          description: "Submission listing"
+          schema:
+            $ref: "#/definitions/SubmissionListing"
+  /submissions/{submissionId}:
+    delete:
+      tags:
+      - "submission"
+      summary: "Delete submission"
+      description: "Delete a submission"
+      operationId: "deleteSubmission"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "api_key"
+        in: "header"
+        required: false
+        type: "string"
+      - in: "path"
+        name: "submissionId"
+        description: "Unique submission identifier"
+        required: true
+        type: string
+      responses:
+        204:
+          description: "Submission listing"
+          schema:
+            $ref: "#/definitions/SubmissionListing"
+        403:
+          description: "Forbidden operation"
+        404:
+          description: "Unknown submission"
+    get:
+      tags:
+      - "submission"
+      summary: "Get submission handle"
+      description: "Get handle for the given submission"
+      operationId: "getSubmission"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "api_key"
+        in: "header"
+        required: false
+        type: "string"
+      - in: "path"
+        name: "submissionId"
+        description: "Unique submission identifier"
+        required: true
+        type: string
+      responses:
+        200:
+          description: "Submission handle"
+          schema:
+            $ref: "#/definitions/SubmissionHandle"
+        404:
+          description: "Unknown submission"
+    put:
+      tags:
+      - "submission"
+      summary: "Update submission"
+      description: "Update submission name and member list"
+      operationId: "updateSubmission"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "api_key"
+        in: "header"
+        required: false
+        type: "string"
+      - in: "path"
+        name: "submissionId"
+        description: "Unique submission identifier"
+        required: true
+        type: string
+      - name: body
+        in: body
+        required: true
+        description: Submission name and members
+        schema:
+            type: object
+            properties:
+              name:
+                type: string
+              members:
+                type: array
+                items:
+                  type: string
+      responses:
+        204:
+          description: "Updated submission handle"
+          schema:
+            $ref: "#/definitions/SubmissionHandle"
+        403:
+          description: "Forbidden operation"
+        404:
+          description: "Unknown submission/user"
+# ------------------------------------------------------------------------------
+# Runs
+# ------------------------------------------------------------------------------
+  /submissions/{submissionId}/run:
+    post:
+      tags:
+      - "run"
       summary: "Run benchmark"
       description: "Submit arguments for a new benchmark run"
       operationId: "runBenchmark"
@@ -152,13 +316,223 @@ paths:
         200:
           description: "Run state"
           schema:
-            $ref: "#/definitions/RunState"
+            $ref: "#/definitions/RunHandle"
         403:
           description: "Forbidden operation"
+        404:
+          description: "Unknown submission"
+  /runs/{runId}:
+    get:
+      tags:
+      - "run"
+      summary: "Get run"
+      description: "Get state and timestamps for a given run"
+      operationId: "getRun"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "api_key"
+        in: "header"
+        required: false
+        type: "string"
+      - in: "path"
+        name: "runId"
+        description: "Unique run identifier"
+        required: true
+        type: string
+      responses:
+        200:
+          description: "Run handle"
+          schema:
+            $ref: "#/definitions/RunHandle"
+        403:
+          description: "Forbidden operation"
+        404:
+          description: "Unknown run"
+  /runs/{runId}/cancel:
+    post:
+      tags:
+      - "run"
+      summary: "Cancel run"
+      description: "Cancel execution of an active run"
+      operationId: "cancelRun"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "api_key"
+        in: "header"
+        required: false
+        type: "string"
+      - in: "path"
+        name: "runId"
+        description: "Unique run identifier"
+        required: true
+        type: string
+      responses:
+        200:
+          description: "Run handle"
+          schema:
+            $ref: "#/definitions/RunHandle"
+        403:
+          description: "Forbidden operation"
+        404:
+          description: "Unknown run"
+# ------------------------------------------------------------------------------
+# Files
+# ------------------------------------------------------------------------------
+  /submissions/{submissionId}/files:
+    get:
+      tags:
+      - "file"
+      summary: "List files"
+      description: "List all files that have been uploaded for this submission"
+      operationId: "listFiles"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "api_key"
+        in: "header"
+        required: false
+        type: "string"
+      - in: "path"
+        name: "submissionId"
+        description: "Unique submission identifier"
+        required: true
+        type: string
+      responses:
+        200:
+          description: "Submission handle"
+          schema:
+            $ref: "#/definitions/SubmissionHandle"
+        404:
+          description: "Unknown submission"
+    post:
+      tags:
+      - "file"
+      summary: "Upload file"
+      description: "Upload a file to be available for future submissions"
+      operationId: "uploadFile"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "api_key"
+        in: "header"
+        required: false
+        type: "string"
+      - in: "path"
+        name: "submissionId"
+        description: "Unique submission identifier"
+        required: true
+        type: string
+      - name: body
+        in: body
+        required: true
+        description: Submission name and members
+        schema:
+            type: object
+            properties:
+              name:
+                type: string
+              members:
+                type: array
+                items:
+                  type: string
+      responses:
+        204:
+          description: "Updated submission handle"
+          schema:
+            $ref: "#/definitions/SubmissionHandle"
+        403:
+          description: "Forbidden operation"
+        404:
+          description: "Unknown submission/user"
+  /submissions/{submissionId}/files/{fileId}:
+    delete:
+      tags:
+      - "file"
+      summary: "Delete file"
+      description: "Delete a previously uploaded file"
+      operationId: "deleteFile"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "api_key"
+        in: "header"
+        required: false
+        type: "string"
+      - in: "path"
+        name: "submissionId"
+        description: "Unique submission identifier"
+        required: true
+        type: string
+      - in: "path"
+        name: "fileId"
+        description: "Unique file identifier"
+        required: true
+        type: string
+      responses:
+        204:
+          description: "Submission listing"
+          schema:
+            $ref: "#/definitions/SubmissionListing"
+        403:
+          description: "Forbidden operation"
+        404:
+          description: "Unknown submission or file"
+    get:
+      tags:
+      - "file"
+      summary: "Download file"
+      description: "Download a previously uploaded file"
+      operationId: "downloadFile"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "api_key"
+        in: "header"
+        required: false
+        type: "string"
+      - in: "path"
+        name: "submissionId"
+        description: "Unique submission identifier"
+        required: true
+        type: string
+      - in: "path"
+        name: "fileId"
+        description: "Unique file identifier"
+        required: true
+        type: string
+      responses:
+        200:
+          description: "Submission handle"
+          schema:
+            $ref: "#/definitions/SubmissionHandle"
+        404:
+          description: "Unknown submission or file"
 # ------------------------------------------------------------------------------
 # Users
 # ------------------------------------------------------------------------------
-  /user/activate:
+  /users:
+    get:
+      tags:
+      - "user"
+      summary: "List users"
+      description: "Query listing of registered users"
+      operationId: "listUsers"
+      produces:
+      - "application/json"
+      parameters:
+      - in: "query"
+        name: "query"
+        description: "User name"
+        required: false
+        type: string
+      responses:
+        200:
+          description: "Query result"
+          schema:
+            $ref: "#/definitions/UserListing"
+  /users/activate:
     post:
       tags:
       - "user"
@@ -173,13 +547,19 @@ paths:
         description: "User name and password"
         required: true
         schema:
-          $ref: "#/definitions/UserIdentifier"
+          type: object
+          description: "Identifier for a registered user"
+          required:
+          - id
+          properties:
+            id:
+              type: string
       responses:
         200:
           description: "User activated successfully"
           schema:
             $ref: "#/definitions/UserHandle"
-  /user/login:
+  /users/login:
     post:
       tags:
       - "user"
@@ -202,7 +582,7 @@ paths:
             $ref: "#/definitions/UserHandle"
         400:
           description: "Invalid username/password supplied"
-  /user/logout:
+  /users/logout:
     post:
       tags:
       - "user"
@@ -223,7 +603,67 @@ paths:
             $ref: "#/definitions/UserHandle"
         403:
           description: "Forbidden operation"
-  /user/register:
+  /users/password/request:
+    post:
+      tags:
+      - "user"
+      summary: "Request password reset"
+      description: "Get unique request identifier to reset user password"
+      operationId: "requestPasswordReset"
+      produces:
+      - "application/json"
+      parameters:
+      - in: "body"
+        name: "body"
+        description: "User name"
+        required: true
+        schema:
+          type: object
+          required:
+          - username
+          properties:
+            username:
+              type: string
+      responses:
+        200:
+          description: "User activated successfully"
+          schema:
+            type: object
+            required:
+            - requestId
+            properties:
+              requestId:
+                type: string
+  /users/password/reset:
+    post:
+      tags:
+      - "user"
+      summary: "Reset password"
+      description: "Reset the password for a user following a password reset request"
+      operationId: "resetPassword"
+      produces:
+      - "application/json"
+      parameters:
+      - in: "body"
+        name: "body"
+        description: "Reset request identifier and new password"
+        required: true
+        schema:
+          type: object
+          required:
+          - requestId
+          - password
+          properties:
+            requestId:
+              type: string
+            password:
+              type: string
+      responses:
+        200:
+          description: "User activated successfully"
+          schema:
+            $ref: "#/definitions/UserHandle"
+  /users/register:
     post:
       tags:
       - "user"
@@ -246,7 +686,7 @@ paths:
             $ref: "#/definitions/UserHandle"
         400:
           description: "Invalid or existing username supplied"
-  /user/whoami:
+  /users/whoami:
     get:
       tags:
       - "user"
@@ -358,23 +798,6 @@ definitions:
     properties:
       ranking:
         type: array
-      schema:
-        type: array
-        items:
-          type: object
-          required:
-          - id
-          - name
-          - type
-          properties:
-            id:
-              type: string
-            name:
-              type: string
-            type:
-              type: string
-      ranking:
-        type: array
         items:
           type: object
           required:
@@ -420,6 +843,21 @@ definitions:
                     type: string
                   value:
                     type: integer
+      schema:
+        type: array
+        items:
+          type: object
+          required:
+          - id
+          - name
+          - type
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+            type:
+              type: string
       links:
         $ref: "#/definitions/HATEOASLinks"
   BenchmarkListing:
@@ -462,7 +900,7 @@ definitions:
         type: array
         items:
           type: object
-  RunState:
+  RunHandle:
     type: object
     description: "Current state of a benchmark run"
     required:
@@ -498,6 +936,57 @@ definitions:
         type: string
       links:
         $ref: "#/definitions/HATEOASLinks"
+  SubmissionHandle:
+    type: object
+    description: Handle for benchmark submission
+    required:
+    - id
+    - name
+    - members
+    - links
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      members:
+        type: array
+        items:
+          type: object
+          required:
+          - id
+          - username
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+      links:
+        $ref: "#/definitions/HATEOASLinks"
+  SubmissionListing:
+    type: object
+    description: List of submission descriptors
+    required:
+    - submissions
+    - links
+    properties:
+      submissions:
+        type: array
+        items:
+          type: object
+          required:
+          - id
+          - name
+          - links
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+            links:
+              $ref: "#/definitions/HATEOASLinks"
+      links:
+        $ref: "#/definitions/HATEOASLinks"
   UserCredentials:
     type: object
     description: "User login credentials"
@@ -525,14 +1014,24 @@ definitions:
         type: string
       links:
         $ref: "#/definitions/HATEOASLinks"
-  UserIdentifier:
+  UserListing:
     type: object
-    description: "Identifier for a registered user"
+    description: "Identifier and name of a registered users"
     required:
-    - id
+    - users
     properties:
-      id:
-        type: string
+      users:
+        type: array
+        items:
+          type: object
+          required:
+          - id
+          - username
+          properties:
+            id:
+              type: string
+            username:
+              type: string
 externalDocs:
   description: "Find out more about Swagger"
   url: "http://swagger.io"

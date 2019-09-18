@@ -10,7 +10,7 @@
 boards.
 """
 
-import robapi.model.benchmark.base as base
+import robapi.model.base as base
 import robtmpl.util as util
 
 
@@ -25,7 +25,7 @@ class ResultRanking(object):
         ----------
         columns: list(robtmpl.template.schema.ResultColumn)
             List of columns in the result schema
-        entrties: list(robapi.model.benchmark.result.RunResult), optional
+        entrties: list(robapi.model.result.RunResult), optional
             List of entries in the result ranking
         """
         self.columns = columns
@@ -59,7 +59,7 @@ class ResultRanking(object):
 
         Returns
         -------
-        robapi.model.benchmark,result.ResultRanking
+        robapi.model.result.ResultRanking
         """
         # Mapping of schema column names to renamed column identifier
         mapping = schema.rename()
@@ -135,7 +135,7 @@ class ResultRanking(object):
 
         Returns
         -------
-        robapi.model.benchmark.result.RunResult
+        robapi.model.result.RunResult
         """
         return self.entries[index]
 

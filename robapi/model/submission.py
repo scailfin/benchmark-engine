@@ -13,12 +13,14 @@ a benchmark.
 """
 
 import json
+import os
 
-from robapi.model.benchmark.result import ResultRanking
-from robapi.model.benchmark.run import RunHandle
+from robapi.model.result import ResultRanking
+from robapi.model.run import RunHandle
+from robapi.model.user import UserHandle
 from robtmpl.template.schema import ResultSchema
 
-import robapi.model.benchmark.base as base
+import robapi.model.base as base
 import robapi.error as err
 import robtmpl.util as util
 
@@ -32,9 +34,12 @@ class SubmissionHandle(object):
     memebers.
 
     Maintains an optional reference to the submission manager that allows to
-    load submission runs in-demand.
+    load submission members and runs on-demand.
     """
-    def __init__(self, identifier, name, owner_id, members=None, manager=None):
+    def __init__(
+        self, identifier, name, benchmark_id, owner_id, members=None,
+        manager=None
+    ):
         """Initialize the object properties.
 
         Parameters
@@ -43,18 +48,36 @@ class SubmissionHandle(object):
             Unique submission identifier
         name: string
             Unique submission name
+        benchmark_id: string
+            Unique benchmark identifier
         owner_id: string
             Unique identifier for the user that created the submission
-        members: list(string)
-            List of user identifier for team members
-        manager: robapi.model.benchmark.submission.SubmissionManager, optional
+        members: list(robapi.model.user.UserHandle)
+            List of handles for team members
+        manager: robapi.model.submission.SubmissionManager, optional
             Optional reference to the submission manager
         """
         self.identifier = identifier
         self.name = name
+        self.benchmark_id = benchmark_id
         self.owner_id = owner_id
-        self.members = set(members) if not members is None else set()
+        self.members = members
         self.manager = manager
+
+    def get_members(self):
+        """Get list of submission members. Loads the member list on-demand if
+        it currently is None.
+
+        Returns
+        -------
+        list(robapi.model.user.UserHandle)
+        """
+        if self.members is None:
+            self.members = self.manager.list_members(
+                submission_id=self.identifier,
+                raise_error=False
+            )
+        return self.members
 
     def get_results(self, order_by=None):
         """Get list of handles for all successful runs in the given submission.
@@ -68,7 +91,7 @@ class SubmissionHandle(object):
 
         Returns
         -------
-        robapi.model.benchmark.result.ResultRanking
+        robapi.model.result.ResultRanking
 
         Raises
         ------
@@ -81,13 +104,37 @@ class SubmissionHandle(object):
 
         Returns
         -------
-        list(robapi.model.benchmark.run.RunHandle)
+        list(robapi.model.run.RunHandle)
 
         Raises
         ------
         robapi.error.UnknownSubmissionError
         """
         return self.manager.get_runs(self.identifier)
+
+    def has_member(self, user_id):
+        """Test if the user with the given identifier is a member of the
+        submission.
+
+        Parameters
+        ----------
+        user_id: string
+            Unique user identifier
+
+        Returns
+        -------
+        bool
+        """
+        for user in self.get_members():
+            if user.identifier == user_id:
+                return True
+        return False
+
+    def reset_members(self):
+        """Set member list to None if the list had been updated. This will
+        ensure that submission members will be loaded on-demand.
+        """
+        self.members = None
 
 
 class SubmissionManager(object):
@@ -155,7 +202,7 @@ class SubmissionManager(object):
 
         Returns
         -------
-        robapi.model.benchmark.base.SubmissionHandle
+        robapi.model.base.SubmissionHandle
 
         Raises
         ------
@@ -171,52 +218,71 @@ class SubmissionManager(object):
         sql += 'WHERE benchmark_id = \'{}\' AND name = ?'.format(benchmark_id)
         base.validate_name(name, con=self.con, sql=sql)
         # Create a new instance of the sumbission class.
-        submission = SubmissionHandle(
-            identifier=util.get_unique_identifier(),
-            name=name,
-            owner_id=user_id,
-            members=members,
-            manager=self
-        )
+        identifier = util.get_unique_identifier()
         # Add owner to list of initial members
-        if not user_id in submission.members:
-            submission.members.add(user_id)
+        if members is None:
+            members = list([user_id])
+        elif not user_id in members:
+            members.append(user_id)
         # Enter submission information into database and commit all changes
         sql = 'INSERT INTO benchmark_submission('
         sql += 'submission_id, benchmark_id, name, owner_id'
         sql += ') VALUES(?, ?, ?, ?)'
-        values = (submission.identifier, benchmark_id, name, user_id)
+        values = (identifier, benchmark_id, name, user_id)
         self.con.execute(sql, values)
         sql = 'INSERT INTO submission_member(submission_id, user_id) VALUES(?, ?)'
-        for member_id in submission.members:
-            self.con.execute(sql, (submission.identifier, member_id))
+        for member_id in set(members):
+            self.con.execute(sql, (identifier, member_id))
         self.con.commit()
         # Return the created submission object
-        return submission
+        return self.get_submission(identifier)
 
     def delete_submission(self, submission_id):
         """Delete the entry for the given submission from the underlying
-        database. Note that this will not remove any runs and run results that
-        are associated with the submission.
-
-        The return value indicates if the identifier referenced an existing
-        submission or not.
+        database. Note that this will also remove any runs and run results that
+        are associated with the submission as well as any associated file
+        resources.
 
         Parameters
         ----------
         identifier: string
             Unique submission identifier
 
-        Returns
-        -------
-        bool
+        Raises
+        ------
+        robapi.error.UnknownSubmissionError
         """
-        cur = self.con.cursor()
-        sql = 'DELETE FROM benchmark_submission WHERE submission_id = ?'
-        # Use row count to determine if the submission existed or not
-        rowcount = cur.execute(sql, (submission_id,)).rowcount
+        # Get the handles for all associated submission runs and collect the
+        # file resources that are associated with each of them. This will raise
+        # an error if the submission is unknown.
+        filenames = list()
+        for run in self.get_runs(submission_id):
+            if run.is_success():
+                for fh in run.get_files():
+                    filenames.append(fh.filename)
+        # Start by deleting all rows in the database that belong to the
+        # submission. Delete files after the database changes are committed
+        # since there is no rollback option for file deletes.
+        psql = 'DELETE FROM {} WHERE run_id IN ('
+        psql += 'SELECT run_id FROM benchmark_run WHERE submission_id = ?)'
+        stmts = list()
+        stmts.append(psql.format('run_result_file'))
+        stmts.append(psql.format('run_error_log'))
+        psql = 'DELETE FROM {} WHERE submission_id = ?'
+        stmts.append(psql.format('benchmark_run'))
+        stmts.append(psql.format('submission_member'))
+        stmts.append(psql.format('benchmark_submission'))
+        for sql in stmts:
+            self.con.execute(sql, (submission_id,))
         self.con.commit()
-        return rowcount > 0
+        # Delete all file resources
+        for f in filenames:
+            # Don't raise an error if the file does not exist or cannot be
+            # removed
+            try:
+                os.remove(f)
+            except OSError:
+                pass
 
     def get_results(self, submission_id, order_by=None):
         """Get list of handles for all successful runs in the given submission.
@@ -232,7 +298,7 @@ class SubmissionManager(object):
 
         Returns
         -------
-        robapi.model.benchmark.result.ResultRanking
+        robapi.model.result.ResultRanking
 
         Raises
         ------
@@ -273,7 +339,7 @@ class SubmissionManager(object):
 
         Returns
         -------
-        list(robapi.model.benchmark.run.RunHandle)
+        list(robapi.model.run.RunHandle)
 
         Raises
         ------
@@ -307,34 +373,101 @@ class SubmissionManager(object):
 
         Returns
         -------
-        robapi.model.benchmark.submission.SubmissionHandle
+        robapi.model.submission.SubmissionHandle
 
         Raises
         ------
         robapi.error.UnknownSubmissionError
         """
         # Get submission information. Raise error if the identifier is unknown.
-        sql = 'SELECT name, owner_id '
+        sql = 'SELECT name, benchmark_id, owner_id '
         sql += 'FROM benchmark_submission '
         sql += 'WHERE submission_id = ?'
         row = self.con.execute(sql, (submission_id,)).fetchone()
         if row is None:
             raise err.UnknownSubmissionError(submission_id)
         name = row['name']
+        benchmark_id = row['benchmark_id']
         owner_id = row['owner_id']
         # Get list of team members
-        members = list()
-        sql = 'SELECT user_id FROM submission_member WHERE submission_id = ?'
-        for row in self.con.execute(sql, (submission_id,)).fetchall():
-            members.append(row['user_id'])
+        members = self.list_members(submission_id, raise_error=False)
         # Return the submission handle
         return SubmissionHandle(
             identifier=submission_id,
             name=name,
+            benchmark_id=benchmark_id,
             owner_id=owner_id,
             members=members,
             manager=self
         )
+
+    def list_members(self, submission_id, raise_error=True):
+        """Get a list of all users that are member of the given submission.
+        Raises an unknown submission error if the list of members is empty and
+        the raise error flag is true.
+
+        Parameters
+        ----------
+        submission_id: string
+            Unique submission identifier
+        raise_error: bool, optional
+            Raise error if true and the member list is empty
+
+        Returns
+        -------
+        list(robapi.model.user.UserHandle)
+
+        Raises
+        ------
+        robapi.error.UnknownSubmissionError
+        """
+        members = list()
+        sql = 'SELECT s.user_id, u.name '
+        sql += 'FROM submission_member s, api_user u '
+        sql += 'WHERE s.user_id = u.user_id AND s.submission_id = ?'
+        for row in self.con.execute(sql, (submission_id,)).fetchall():
+            user = UserHandle(identifier=row['user_id'], name=row['name'])
+            members.append(user)
+        if len(members) == 0 and raise_error:
+            raise err.UnknownSubmissionError(submission_id)
+        return members
+
+    def list_submissions(self, user=None):
+        """Get a listing of submission descriptors. If the user is given only
+        those submissions are returned that the user is a member of.
+
+        Parameters
+        ----------
+        user: robapi.model.user.UserHandle, optional
+            User handle
+
+        Returns
+        -------
+        list(robapi.model.submission.SubmissionHandle)
+        """
+        # Generate SQL query depending on whether the user is given or not
+        sql = 'SELECT s.submission_id, s.name, s.benchmark_id, s.owner_id '
+        sql += 'FROM benchmark_submission s'
+        if user is None:
+            para = ()
+        else:
+            sql += ' WHERE s.submission_id IN ('
+            sql += 'SELECT m.submission_id '
+            sql += 'FROM submission_member m '
+            sql += 'WHERE m.user_id = ?)'
+            para = (user.identifier,)
+        # Create list of submission handle from query result
+        submissions = list()
+        for row in self.con.execute(sql, para).fetchall():
+            s = SubmissionHandle(
+                identifier=row['submission_id'],
+                name=row['name'],
+                benchmark_id=row['benchmark_id'],
+                owner_id=row['owner_id'],
+                manager=self
+            )
+            submissions.append(s)
+        return submissions
 
     def remove_member(self, submission_id, user_id):
         """Remove a user as a menber from the given submission. The return value
@@ -354,10 +487,6 @@ class SubmissionManager(object):
         Returns
         -------
         bool
-
-        Raises
-        ------
-        robapi.error.ConstraintViolationError
         """
         cur = self.con.cursor()
         sql = 'DELETE FROM submission_member '
@@ -366,3 +495,59 @@ class SubmissionManager(object):
         rowcount = cur.execute(sql, (submission_id, user_id)).rowcount
         self.con.commit()
         return rowcount > 0
+
+    def update_submission(self, submission_id, name=None, members=None):
+        """Update the name and/or list of members for a submission.
+
+        Parameters
+        ----------
+        submission_id: string
+            Unique submission identifier
+        name: string, optional
+            Unique user identifier
+        members: list(string), optional
+            List of user identifier for submission members
+
+        Returns
+        -------
+        robapi.model.submission.SubmissionHandle
+
+        Raises
+        ------
+        robapi.error.ConstraintViolationError
+        robapi.error.UnknownSubmissionError
+        """
+        # Get submission handle. This will raise an error if the submission is
+        # unknown.
+        submission = self.get_submission(submission_id)
+        # If name and members are None we simply return the submission handle.
+        if name is None and members is None:
+            return submission
+        if not name is None and name != submission.name:
+            # Ensure that the given name is valid and unique for the benchmark
+            sql = 'SELECT name FROM benchmark_submission '
+            sql += 'WHERE benchmark_id = \'{}\' AND name = ?'
+            sql = sql.format(submission.benchmark_id)
+            base.validate_name(name, con=self.con, sql=sql)
+            sql = 'UPDATE benchmark_submission SET name = ? '
+            sql += 'WHERE submission_id = ?'
+            self.con.execute(sql, (name, submission_id))
+            submission.name = name
+        if not members is None:
+            # Delete members that are not in the given list
+            sql = 'DELETE FROM submission_member '
+            sql += 'WHERE submission_id = ? AND user_id = ?'
+            for user in submission.get_members():
+                if not user.identifier in members:
+                    self.con.execute(sql, (submission_id, user.identifier))
+            # Add users that are not members of the submission
+            sql = 'INSERT INTO submission_member(submission_id, user_id) '
+            sql += 'VALUES(?, ?)'
+            for user_id in members:
+                if not submission.has_member(user_id):
+                    self.con.execute(sql, (submission_id, user_id))
+            # Clear the member list in the submission handle to ensure that the
+            # members are reloaded on-demand
+            submission.reset_members()
+        self.con.commit()
+        return submission

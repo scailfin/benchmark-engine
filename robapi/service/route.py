@@ -36,8 +36,8 @@ class UrlFactory(object):
             self.base_url = self.base_url[:-1]
         # Set base Url for resource related requests
         self.benchmark_base_url = self.base_url + '/benchmarks'
-        self.team_base_url = self.base_url + '/teams'
-        self.user_base_url = self.base_url + '/user'
+        self.submission_base_url = self.base_url + '/submissions'
+        self.user_base_url = self.base_url + '/users'
 
     def activate_user(self):
         """Url to POST user activation request for newly registered users.
@@ -122,19 +122,19 @@ class UrlFactory(object):
         """
         return self.get_benchmark(benchmark_id) + '/leaderboard'
 
-    def get_team(self, team_id):
-        """Url to GET team handle.
+    def get_submission(self, submission_id):
+        """Url to GET submission handle.
 
         Parameters
         ----------
-        team_id: string
-            Unique team identifier
+        submission_id: string
+            Unique submission identifier
 
         Returns
         -------
         string
         """
-        return self.team_base_url + '/' + team_id
+        return self.submission_base_url + '/' + submission_id
 
     def list_benchmarks(self):
         """Url to GET a list of all benchmarks.
@@ -145,15 +145,14 @@ class UrlFactory(object):
         """
         return self.benchmark_base_url
 
-    def list_teams(self):
-        """Url to GET list of teams that a user is subscribed to and to POST a
-        create team request.
+    def list_submissions(self):
+        """Url to GET list of submissions that a user is a memebr of.
 
         Returns
         -------
         string
         """
-        return self.team_base_url
+        return self.submission_base_url
 
     def login(self):
         """Url to POST user credentials for login.

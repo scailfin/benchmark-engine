@@ -22,7 +22,7 @@ class BenchmarkSerializer(object):
 
         Parameters
         ----------
-        urls: robapi.api.route.UrlFactory
+        urls: robapi.service.route.UrlFactory
             Factory for resource urls
         """
         self.urls = urls
@@ -33,7 +33,7 @@ class BenchmarkSerializer(object):
 
         Parameters
         ----------
-        benchmark: robapi.model.benchmark.repo.BenchmarkHandle
+        benchmark: robapi.model.repo.BenchmarkHandle
             Competition handle
 
         Returns
@@ -81,7 +81,7 @@ class BenchmarkSerializer(object):
         ----------
         benchmark_id: string
             Unique benchmark identifier
-        leaderboard: robapi.model.benchmark.result.ResultRanking
+        leaderboard: robapi.model.result.ResultRanking
             List of entries in the benchmark leaderboard
 
         Returns
@@ -125,7 +125,7 @@ class BenchmarkSerializer(object):
 
         Parameters
         ----------
-        benchmarks: list(robapi.model.benchmark.repo.BenchmarkHandle)
+        benchmarks: list(robapi.model.repo.BenchmarkHandle)
             List of benchmark descriptors
 
         Returns

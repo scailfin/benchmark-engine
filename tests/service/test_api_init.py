@@ -6,7 +6,7 @@ import shutil
 from unittest import TestCase
 
 from robapi.api.base import EngineApi
-from robapi.api.route import UrlFactory
+from robapi.service.route import UrlFactory
 from robapi.db import DatabaseDriver
 
 import robapi.api.serialize.hateoas as hateoas

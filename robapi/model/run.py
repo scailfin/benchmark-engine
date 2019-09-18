@@ -14,7 +14,7 @@ from robtmpl.workflow.state.base import (
     StatePending, StateError, StateRunning, StateSuccess
 )
 
-import robapi.model.benchmark.base as base
+import robapi.model.base as base
 import robtmpl.workflow.state.base as st
 import robtmpl.util as util
 
@@ -63,7 +63,7 @@ class RunHandle(object):
 
         Returns
         -------
-        robapi.model.benchmark.run.RunHandle
+        robapi.model.run.RunHandle
         """
         run_id = doc['run_id']
         benchmark_id = doc['benchmark_id']
@@ -113,6 +113,18 @@ class RunHandle(object):
             state=state
         )
 
+    def get_files(self):
+        """Shortcut to access all associated file resources.
+
+        Returns
+        -------
+        list(robtmpl.workflow.resource.FileResource)
+        """
+        if not self.is_success():
+            return list()
+        else:
+            return self.state.files.values()
+            
     def is_active(self):
         """A run is in active state if it is either pending or running.
 

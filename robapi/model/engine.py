@@ -12,7 +12,7 @@ maintaining the state of running workflows.
 
 import json
 
-from robapi.model.benchmark.run import RunHandle
+from robapi.model.run import RunHandle
 from robtmpl.template.schema import ResultSchema
 from robtmpl.workflow.state.base import StatePending
 
@@ -57,7 +57,7 @@ class BenchmarkEngine(object):
 
         Returns
         -------
-        robapi.model.benchmark.run.RunHandle
+        robapi.model.run.RunHandle
 
         Raises
         ------
@@ -97,7 +97,7 @@ class BenchmarkEngine(object):
 
         Returns
         -------
-        robapi.model.benchmark.run.RunHandle
+        robapi.model.run.RunHandle
 
         Raises
         ------
@@ -149,7 +149,7 @@ class BenchmarkEngine(object):
 
         Returns
         -------
-        robapi.model.benchmark.run.RunHandle
+        robapi.model.run.RunHandle
 
         Raises
         ------

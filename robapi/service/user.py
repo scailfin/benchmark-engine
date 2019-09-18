@@ -27,14 +27,16 @@ class UserService(object):
         ----------
         manager: robapi.model.user.UserManager
             Manager for registered users
-        urls: robapi.api.route.UrlFactory
+        urls: robapi.service.route.UrlFactory
             Factory for API resource Urls
         serializer: robapi.api.serialize.user.UserSerializer, optional
             Override the default serializer
         """
         self.manager = manager
         self.urls = urls if not urls is None else UrlFactory()
-        self.serialize = serializer if not serializer is None else UserSerializer(self.urls)
+        self.serialize = serializer
+        if self.serialize is None:
+            self.serialize = UserSerializer(self.urls)
 
     def activate_user(self, user_id):
         """Activate a new user with the given identifier.
@@ -73,7 +75,7 @@ class UserService(object):
         ------
         robapi.model.user.error.UnknownUserError
         """
-        return self.serialize.user(self.manager.login(username, password))
+        return self.serialize.user(self.manager.login_user(username, password))
 
     def logout_user(self, access_token):
         """Logout user that is associated with the given access token. This
@@ -92,7 +94,7 @@ class UserService(object):
         ------
         robapi.error.UnauthenticatedAccessError
         """
-        return self.serialize.user(self.manager.logout(access_token))
+        return self.serialize.user(self.manager.logout_user(access_token))
 
     def register_user(self, username, password, verify=False):
         """Create a new user for the given username and password. Raises an
@@ -142,5 +144,5 @@ class UserService(object):
         -------
         dict
         """
-        user = auth.authenticate(self.manager.con, access_token)
+        user = auth.authenticate_user(self.manager.con, access_token)
         return self.serialize.user(user)

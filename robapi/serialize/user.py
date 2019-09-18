@@ -19,7 +19,7 @@ class UserSerializer(object):
 
         Parameters
         ----------
-        urls: robapi.api.route.UrlFactory
+        urls: robapi.service.route.UrlFactory
             Factory for resource urls
         """
         self.urls = urls

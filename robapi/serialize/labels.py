@@ -28,6 +28,7 @@ RUN = 'run'
 SCHEMA = 'schema'
 SUBMISSION = 'submission'
 VALUE = 'value'
+
 # Benchmark runs
 CREATED_AT = 'createdAt'
 STARTED_AT = 'startedAt'
@@ -43,11 +44,10 @@ LINKS = 'links'
 REF = 'href'
 REL = 'rel'
 
-# Teams
-MEMBER_COUNT = 'memberCount'
+# Submissions
+SUBMISSIONS = 'submissions'
 MEMBERS = 'members'
 OWNER_ID = 'ownerId'
-TEAMS = 'teams'
 
 # Users
 ACCESS_TOKEN = 'token'

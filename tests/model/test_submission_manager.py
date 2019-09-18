@@ -13,21 +13,23 @@ import pytest
 
 from passlib.hash import pbkdf2_sha256
 
-from robapi.model.benchmark.engine import BenchmarkEngine
-from robapi.model.benchmark.repo import BenchmarkRepository
-from robapi.model.benchmark.submission import SubmissionManager
+from robapi.model.engine import BenchmarkEngine
+from robapi.model.repo import BenchmarkRepository
+from robapi.model.submission import SubmissionManager
+from robapi.model.user import UserHandle
 from robapi.tests.benchmark import StateEngine
 from robtmpl.template.repo.fs import TemplateFSRepository
 from robtmpl.workflow.state.base import StatePending
 
 import robapi.error as err
+import robapi.tests.benchmark as wf
 import robapi.tests.db as db
 import robtmpl.util as util
 
 
 DIR = os.path.dirname(os.path.realpath(__file__))
-TEMPLATE_DIR = os.path.join(DIR, '../../.files/templates/helloworld')
-TEMPLATE_WITHOUT_SCHEMA = os.path.join(DIR, '../../.files/templates/template.json')
+TEMPLATE_DIR = os.path.join(DIR, '../.files/templates/helloworld')
+TEMPLATE_WITHOUT_SCHEMA = os.path.join(DIR, '../.files/templates/template.json')
 
 
 USER_1 = util.get_unique_identifier()
@@ -69,7 +71,7 @@ class TestSubmissionManager(object):
         assert submission.name == 'A'
         assert submission.owner_id == USER_1
         assert len(submission.members) == 1
-        assert USER_1 in submission.members
+        assert submission.has_member(USER_1)
         submission = manager.create_submission(
             benchmark_id=bm.identifier,
             name='B',
@@ -79,7 +81,17 @@ class TestSubmissionManager(object):
         assert submission.owner_id == USER_2
         assert len(submission.members) == 3
         for user_id in [USER_1, USER_2, USER_3]:
-            assert user_id in submission.members
+            assert submission.has_member(user_id)
+        # Duplicate users in member list
+        submission = manager.create_submission(
+            benchmark_id=bm.identifier,
+            name='C',
+            user_id=USER_3,
+            members=[USER_1, USER_3, USER_1, USER_3]
+        )
+        for user_id in [USER_1, USER_3]:
+            assert submission.has_member(user_id)
+        assert not submission.has_member(USER_2)
         # Error conditions
         # - Unknown benchmark
         with pytest.raises(err.UnknownBenchmarkError):
@@ -99,17 +111,40 @@ class TestSubmissionManager(object):
     def test_delete_submission(self, tmpdir):
         """Test creating and deleting submissions."""
         # Initialize the repository and the benchmark
-        manager, bm, _ = self.init(str(tmpdir))
+        manager, bm, engine = self.init(str(tmpdir))
+        # Create a new submission with two run results
         submission = manager.create_submission(
             benchmark_id=bm.identifier,
             name='A',
             user_id=USER_1
         )
+        wf.run_workflow(
+            engine=engine,
+            template=bm.get_template(),
+            submission_id=submission.identifier,
+            base_dir=str(tmpdir),
+            values={'max_len': 1, 'avg_count': 1.1, 'max_line': 'R0'}
+        )
+        wf.run_workflow(
+            engine=engine,
+            template=bm.get_template(),
+            submission_id=submission.identifier,
+            base_dir=str(tmpdir),
+            values={'max_len': 1, 'avg_count': 1.1, 'max_line': 'R0'}
+        )
         submission = manager.get_submission(submission.identifier)
-        assert manager.delete_submission(submission.identifier)
-        assert not manager.delete_submission(submission.identifier)
+        filenames = list()
+        for run in submission.get_runs():
+            for fh in run.get_files():
+                filenames.append(fh.filename)
+                assert os.path.isfile(fh.filename)
+        manager.delete_submission(submission.identifier)
+        for f in filenames:
+            assert not os.path.isfile(f)
         with pytest.raises(err.UnknownSubmissionError):
             manager.get_submission(submission.identifier)
+        with pytest.raises(err.UnknownSubmissionError):
+            manager.delete_submission(submission.identifier)
 
     def test_get_runs(self, tmpdir):
         """Test retrieving list of submission runs."""
@@ -178,7 +213,7 @@ class TestSubmissionManager(object):
         assert submission.name == 'A'
         assert submission.owner_id == USER_1
         assert len(submission.members) == 1
-        assert USER_1 in submission.members
+        assert submission.has_member(USER_1)
         submission = manager.create_submission(
             benchmark_id=bm.identifier,
             name='B',
@@ -190,10 +225,46 @@ class TestSubmissionManager(object):
         assert submission.owner_id == USER_2
         assert len(submission.members) == 3
         for user_id in [USER_1, USER_2, USER_3]:
-            assert user_id in submission.members
+            assert submission.has_member(user_id)
         # Error when accessing an unknown submission
         with pytest.raises(err.UnknownSubmissionError):
             manager.get_submission('UNK')
+
+    def test_list_submission(self, tmpdir):
+        """Test listing submissions."""
+        # Initialize the repository and the benchmark
+        manager, bm, _ = self.init(str(tmpdir))
+        # Create three submissions. USER_1 is member of all three submissions.
+        # USER_2 and USER_3 are member of one submissions
+        s1 = manager.create_submission(
+            benchmark_id=bm.identifier,
+            name='A',
+            user_id=USER_1
+        )
+        s2 = manager.create_submission(
+            benchmark_id=bm.identifier,
+            name='B',
+            user_id=USER_1,
+            members=[USER_2]
+        )
+        s3 = manager.create_submission(
+            benchmark_id=bm.identifier,
+            name='C',
+            user_id=USER_3,
+            members=[USER_1]
+        )
+        user_1 = UserHandle(identifier=USER_1, name=USER_1)
+        user_2 = UserHandle(identifier=USER_2, name=USER_2)
+        user_3 = UserHandle(identifier=USER_3, name=USER_3)
+        assert len(manager.list_submissions()) == 3
+        assert len(manager.list_submissions(user=user_1)) == 3
+        assert len(manager.list_submissions(user=user_2)) == 1
+        submissions3 = manager.list_submissions(user=user_3)
+        assert len(submissions3) == 1
+        members3 = [m.identifier for m in submissions3[0].get_members()]
+        assert USER_1 in members3
+        assert not USER_2 in members3
+        assert USER_3 in members3
 
     def test_submission_membership(self, tmpdir):
         """Test adding and removing submission members."""
@@ -217,12 +288,63 @@ class TestSubmissionManager(object):
         submission = manager.get_submission(s_id)
         assert len(submission.members) == 2
         for user_id in [USER_1, USER_2]:
-            assert user_id in submission.members
+            assert submission.has_member(user_id)
+        assert not submission.has_member(USER_3)
         assert manager.remove_member(submission_id=s_id, user_id=USER_1)
         assert not manager.remove_member(submission_id=s_id, user_id=USER_1)
         submission = manager.get_submission(s_id)
         assert len(submission.members) == 1
-        assert USER_2 in submission.members
+        assert submission.has_member(USER_2)
         assert manager.remove_member(submission_id=s_id, user_id=USER_2)
+        # Cannot access a submission without a member
         submission = manager.get_submission(s_id)
         assert len(submission.members) == 0
+        with pytest.raises(err.UnknownSubmissionError):
+            manager.list_members(s_id, raise_error=True)
+
+    def test_update_submission(self, tmpdir):
+        """Test updating submission name and member list."""
+        # Initialize the repository and the benchmark
+        manager, bm, _ = self.init(str(tmpdir))
+        # Add two submissions
+        s1 = manager.create_submission(
+            benchmark_id=bm.identifier,
+            name='A',
+            user_id=USER_1
+        )
+        s2 = manager.create_submission(
+            benchmark_id=bm.identifier,
+            name='B',
+            user_id=USER_2,
+            members=[USER_1]
+        )
+        # Update submission name only
+        s1 = manager.update_submission(s1.identifier, name='C')
+        assert s1.name == 'C'
+        assert len(s1.get_members()) == 1
+        assert s1.has_member(USER_1)
+        # Cannot change name to an existing one
+        with pytest.raises(err.ConstraintViolationError):
+            manager.update_submission(s1.identifier, name='B')
+        # Update without any changes
+        s1 = manager.update_submission(s1.identifier, name='C')
+        assert s1.name == 'C'
+        assert len(s1.get_members()) == 1
+        s1 = manager.update_submission(s1.identifier)
+        assert s1.name == 'C'
+        assert len(s1.get_members()) == 1
+        # Update submission members
+        s2 = manager.update_submission(s2.identifier, members=[USER_3])
+        assert s2.name == 'B'
+        assert len(s2.get_members()) == 1
+        assert s2.has_member(USER_3)
+        # Update name and members
+        s2 = manager.update_submission(
+            s2.identifier,
+            name='D',
+            members=[USER_1, USER_3]
+        )
+        assert s2.name == 'D'
+        assert len(s2.get_members()) == 2
+        assert s2.has_member(USER_1)
+        assert s2.has_member(USER_3)

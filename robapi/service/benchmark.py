@@ -24,16 +24,18 @@ class BenchmarkService(object):
 
         Parameters
         ----------
-        repo: robapi.model.benchmark.repo.BenchmarkRepository
+        repo: robapi.model.repo.BenchmarkRepository
             Repository to access registered benchmarks
-        urls: robapi.api.route.UrlFactory
+        urls: robapi.service.route.UrlFactory
             Factory for API resource Urls
         serializer: robapi.serialize.benchmark.BenchmarkSerializer, optional
             Override the default serializer
         """
         self.repo = repo
         self.urls = urls if not urls is None else UrlFactory()
-        self.serialize = serializer if not serializer is None else BenchmarkSerializer(self.urls)
+        self.serialize = serializer
+        if self.serialize is None:
+            self.serialize = BenchmarkSerializer(self.urls)
 
     def get_benchmark(self, benchmark_id):
         """Get serialization of the handle for the given benchmark.

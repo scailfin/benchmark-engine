@@ -12,9 +12,9 @@ import os
 
 from passlib.hash import pbkdf2_sha256
 
-from robapi.model.benchmark.engine import BenchmarkEngine
-from robapi.model.benchmark.submission import SubmissionManager
-from robapi.model.benchmark.repo import BenchmarkRepository
+from robapi.model.engine import BenchmarkEngine
+from robapi.model.submission import SubmissionManager
+from robapi.model.repo import BenchmarkRepository
 from robapi.service.benchmark import BenchmarkService
 from robtmpl.template.repo.fs import TemplateFSRepository
 
@@ -40,7 +40,7 @@ RELS = [hateoas.SELF, hateoas.benchmark(hateoas.LEADERBOARD)]
 class TestBenchmarkApi(object):
     """Test API methods that access and list benchmarks and leader boards."""
     def init(self, base_dir):
-        """Initialize the database and the benchmark repositorym. Loads three
+        """Initialize the database and the benchmark repository. Loads three
         copies of the same benchmark and returns a list of the benchmark
         handles.
         """
