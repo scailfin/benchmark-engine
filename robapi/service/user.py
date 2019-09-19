@@ -20,19 +20,22 @@ class UserService(object):
     """Implement methods that handle user login and logout as well as
     registration and activation of new users.
     """
-    def __init__(self, manager, urls=None, serializer=None):
+    def __init__(self, manager, auth, urls=None, serializer=None):
         """Initialize the user manager that maintains all registered users.
 
         Parameters
         ----------
         manager: robapi.model.user.UserManager
             Manager for registered users
+        auth: robapi.model.auth.Auth
+            Implementation of the authorization policy for the API
         urls: robapi.service.route.UrlFactory
             Factory for API resource Urls
         serializer: robapi.api.serialize.user.UserSerializer, optional
             Override the default serializer
         """
         self.manager = manager
+        self.auth = auth
         self.urls = urls if not urls is None else UrlFactory()
         self.serialize = serializer
         if self.serialize is None:
@@ -56,6 +59,22 @@ class UserService(object):
         """
         return self.serialize.user(self.manager.activate_user(user_id))
 
+    def list_users(self, query=None):
+        """Get a listing of registered users. The optional query string is used
+        to filter users whose name starts with the given string.
+
+        Parameters
+        ----------
+        query: string, optional
+            Prefix string to filter users based on their name.
+
+        Returns
+        -------
+        dict
+        """
+        users = self.manager.list_users(query=query)
+        return self.serialize.user_listing(users)
+
     def login_user(self, username, password):
         """Get handle for user with given credentials. Raises error if the user
         is unknown or if invalid credentials are provided.
@@ -77,14 +96,13 @@ class UserService(object):
         """
         return self.serialize.user(self.manager.login_user(username, password))
 
-    def logout_user(self, access_token):
-        """Logout user that is associated with the given access token. This
-        method will always return a success object.
+    def logout_user(self, user):
+        """Logout given user.
 
         Parameters
         ----------
-        access_token: string
-            User access token
+        user: robapi.model.user.UserHandle
+            Handle for user that is being logged out
 
         Returns
         -------
@@ -94,7 +112,7 @@ class UserService(object):
         ------
         robapi.error.UnauthenticatedAccessError
         """
-        return self.serialize.user(self.manager.logout_user(access_token))
+        return self.serialize.user(self.manager.logout_user(user))
 
     def register_user(self, username, password, verify=False):
         """Create a new user for the given username and password. Raises an
@@ -144,5 +162,5 @@ class UserService(object):
         -------
         dict
         """
-        user = auth.authenticate_user(self.manager.con, access_token)
+        user = self.auth.authenticate(access_token)
         return self.serialize.user(user)

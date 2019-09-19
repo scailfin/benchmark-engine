@@ -53,11 +53,12 @@ class TestSubmissionManager(object):
         con.execute(sql, (USER_2, USER_2, pbkdf2_sha256.hash(USER_2), 1))
         con.execute(sql, (USER_3, USER_3, pbkdf2_sha256.hash(USER_3), 0))
         con.commit()
-        bm = repo = BenchmarkRepository(
+        bm = BenchmarkRepository(
             con=con,
             template_repo=TemplateFSRepository(base_dir=str(base_dir))
         ).add_benchmark(name='A', src_dir=TEMPLATE_DIR)
-        return SubmissionManager(con=con), bm, BenchmarkEngine(con=con)
+        submissions = SubmissionManager(con=con, directory=base_dir)
+        return submissions, bm, BenchmarkEngine(con=con)
 
     def test_create_submission(self, tmpdir):
         """Test creating a submission."""
@@ -210,10 +211,20 @@ class TestSubmissionManager(object):
             user_id=USER_1
         )
         submission = manager.get_submission(submission.identifier)
+        assert not submission.members is None
         assert submission.name == 'A'
         assert submission.owner_id == USER_1
         assert len(submission.members) == 1
         assert submission.has_member(USER_1)
+        # If the load members flag is false submission members have to be
+        # loaded on demand
+        submission = manager.get_submission(
+            submission.identifier,
+            load_members=False
+        )
+        assert submission.members is None
+        assert not submission.get_members() is None
+        assert not submission.members is None
         submission = manager.create_submission(
             benchmark_id=bm.identifier,
             name='B',

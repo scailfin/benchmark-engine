@@ -106,6 +106,22 @@ class UnknownBenchmarkError(UnknownObjectError):
         )
 
 
+class UnknownFileError(UnknownObjectError):
+    """Exception indicating that a given file identifier is unknown."""
+    def __init__(self, file_id):
+        """Initialize error message.
+
+        Parameters
+        ----------
+        file_id : string
+            Unique file identifier
+        """
+        super(UnknownFileError, self).__init__(
+            obj_id=file_id,
+            type_name='file'
+        )
+
+
 class UnknownSubmissionError(UnknownObjectError):
     """Exception indicating that a given submission identifier is unknown."""
     def __init__(self, user_id):

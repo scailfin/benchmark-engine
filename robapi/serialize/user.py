@@ -65,3 +65,26 @@ class UserSerializer(object):
             links[hateoas.user(hateoas.LOGIN)] = self.urls.login()
         doc[labels.LINKS] = hateoas.serialize(links)
         return doc
+
+    def user_listing(self, users):
+        """Serialize a list of user handles.
+
+        Parameters
+        ----------
+        users: list(robapi.model.user.UserHandle)
+            List of user handles
+
+        Returns
+        -------
+        dict
+        """
+        return {
+            labels.USERS: [
+                {
+                    labels.ID: user.identifier,
+                    labels.USERNAME: user.name
+                } for user in users],
+            labels.LINKS: hateoas.serialize({
+                hateoas.SELF: self.urls.list_users()
+            })
+        }

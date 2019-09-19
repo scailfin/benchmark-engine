@@ -62,13 +62,13 @@ class UrlFactory(object):
         """
         return self.get_team(team_id) + '/members'
 
-    def delete_file(self, team_id, file_id):
+    def delete_file(self, submission_id, file_id):
         """Url to DELETE a previously uploaded file.
 
         Parameters
         ----------
-        team_id: string
-            Unique team identifier
+        submission_id: string
+            Unique submission identifier
         file_id: string
             Unique file identifier
 
@@ -76,15 +76,15 @@ class UrlFactory(object):
         -------
         string
         """
-        return self.team_files(team_id) + '/' + file_id
+        return self.list_files(submission_id) + '/' + file_id
 
-    def download_file(self, team_id, file_id):
+    def download_file(self, submission_id, file_id):
         """Url to GET a previously uploaded file.
 
         Parameters
         ----------
-        team_id: string
-            Unique team identifier
+        submission_id: string
+            Unique submission identifier
         file_id: string
             Unique file identifier
 
@@ -92,7 +92,7 @@ class UrlFactory(object):
         -------
         string
         """
-        return self.team_files(team_id) + '/' + file_id + '/download'
+        return self.list_files(submission_id) + '/' + file_id
 
     def get_benchmark(self, benchmark_id):
         """Url to GET benchmark handle.
@@ -145,6 +145,20 @@ class UrlFactory(object):
         """
         return self.benchmark_base_url
 
+    def list_files(self, submission_id):
+        """Url to GET listing of all uploaded files for a given submission.
+
+        Parameters
+        ----------
+        submission_id: string
+            Unique submission identifier
+
+        Returns
+        -------
+        string
+        """
+        return self.get_submission(submission_id) + '/files'
+
     def list_submissions(self):
         """Url to GET list of submissions that a user is a memebr of.
 
@@ -153,6 +167,15 @@ class UrlFactory(object):
         string
         """
         return self.submission_base_url
+
+    def list_users(self):
+        """Url to GET listing of registered users.
+
+        Returns
+        -------
+        string
+        """
+        return self.user_base_url
 
     def login(self):
         """Url to POST user credentials for login.

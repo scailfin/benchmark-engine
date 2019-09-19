@@ -37,3 +37,8 @@ class TestSQLiteConnector(object):
             assert rs[0]['name'] == 'Alice'
             assert rs[1]['benchmark_id'] == '5678'
             assert rs[1]['name'] == 'Bob'
+            # Ensure that LIKE is case sensitive
+            sql = 'SELECT * FROM benchmark WHERE name LIKE \'a%\''
+            assert len(con.execute(sql).fetchall()) == 0
+            sql = 'SELECT * FROM benchmark WHERE name LIKE \'A%\''
+            assert len(con.execute(sql).fetchall()) == 1

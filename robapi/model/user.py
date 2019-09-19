@@ -112,6 +112,34 @@ class UserManager(object):
             self.con.commit()
         return UserHandle(identifier=user_id, name=user['name'])
 
+    def list_users(self, query=None):
+        """Get a listing of registered users. The optional query string is used
+        to filter users whose name starts with the given string.
+
+        Parameters
+        ----------
+        query: string, optional
+            Prefix string to filter users based on their name.
+
+        Returns
+        -------
+        list(robapi.model.user.UserHandle)
+        """
+        # Construct search query based on whether the query argument is given
+        # or not
+        sql = 'SELECT user_id, name FROM api_user WHERE active = 1'
+        if not query is None:
+            sql += ' AND name LIKE ?'
+            para = ('{}%'.format(query),)
+        else:
+            para = ()
+        sql += ' ORDER BY name'
+        # Execute search query and generate result set
+        rs = list()
+        for row in self.con.execute(sql, para).fetchall():
+            rs.append(UserHandle(identifier=row['user_id'], name=row['name']))
+        return rs
+
     def login_user(self, username, password):
         """Authorize a given user and assign an API key for them. If the user
         is unknown or the given credentials do not match those in the database
@@ -160,14 +188,13 @@ class UserManager(object):
         self.con.commit()
         return UserHandle(identifier=user_id, name=name, api_key=api_key)
 
-    def logout_user(self, api_key):
-        """Invalidate the given API key. This will logout the user that is
-        associated with the key.
+    def logout_user(self, user):
+        """Invalidate the API key for the given user. This will logout the user.
 
         Parameters
         ----------
-        api_key: string
-            Unique API key assigned at login
+        user: robapi.model.user.UserHandle
+            Handle for user that is being logged out
 
         Returns
         -------
@@ -177,8 +204,8 @@ class UserManager(object):
         ------
         robapi.error.UnauthenticatedAccessError
         """
-        user = authenticate_user(con=self.con, api_key=api_key)
-        self.con.execute('DELETE FROM user_key WHERE api_key = ?', (api_key,))
+        sql = 'DELETE FROM user_key WHERE user_id = ?'
+        self.con.execute(sql, (user.identifier,))
         self.con.commit()
         return UserHandle(identifier=user.identifier, name=user.name)
 

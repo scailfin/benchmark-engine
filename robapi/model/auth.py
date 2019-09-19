@@ -12,6 +12,7 @@ given user can execute a requested action.
 """
 
 import datetime as dt
+import dateutil.parser
 
 from abc import abstractmethod
 
@@ -23,6 +24,7 @@ import robapi.error as err
 """Unique identifier for API resources that are controlled by the authorization
 module.
 """
+FILE = 'file'
 SUBMISSION = 'submission'
 
 
@@ -182,11 +184,11 @@ class DefaultAuthPolicy(Auth):
         -------
         bool
         """
-        if resource_type == SUBMISSION:
-            sql = 'SELECT submission_id FROM submission_member '
-            sql += 'WHERE submission_id = ? AND user_id = ?'
-            params = (resource_id, user.identifier)
-            return not self.con.execute(sql, params).fetchone() is None
+        if resource_type in [SUBMISSION, FILE]:
+            return self.is_submission_member(
+                submission_id=resource_id,
+                user_id=user.identifier
+            )
         # By default a user has access to all resources that are not controlled
         # by the policy
         return True
@@ -207,6 +209,101 @@ class DefaultAuthPolicy(Auth):
         -------
         bool
         """
+        if resource_type == FILE:
+            # The user has to be a member of the submission in order to access
+            # or manipulate uploaded files
+            return self.is_submission_member(
+                submission_id=resource_id,
+                user_id=user.identifier
+            )
         # By default a user has access to all resources that are not controlled
         # by the policy
+        return True
+
+    def is_submission_member(self, submission_id, user_id):
+        """Test if the user is member of the given submission.
+
+        Parameters
+        ----------
+        submission_id: string
+            Unique submission identifier
+        user_id: string
+            Unique user identifier
+            
+        Returns
+        -------
+        bool
+        """
+        sql = 'SELECT submission_id FROM submission_member '
+        sql += 'WHERE submission_id = ? AND user_id = ?'
+        params = (submission_id, user_id)
+        return not self.con.execute(sql, params).fetchone() is None
+
+
+class OpenAccessAuth(Auth):
+    """Implementation for the API's authorization policy that gives full access
+    to any registered user.
+    """
+    def __init__(self, con):
+        """Initialize the database connection.
+
+        Parameters
+        ----------
+        con: DB-API 2.0 database connection
+            Connection to underlying database
+        """
+        super(OpenAccessAuth, self).__init__(con)
+
+    def can_delete(self, resource_type, resource_id, user):
+        """Everyone can delete any resource.
+
+        Parameters
+        ----------
+        resource_type: string
+            Unique resource type identifier
+        resource_id: string
+            Unique resource identifier
+        user: robapi.model.user.UserHandle
+            Handle for user that is accessing the resource
+
+        Returns
+        -------
+        bool
+        """
+        return True
+
+    def can_modify(self, resource_type, resource_id, user):
+        """Everyone can modify any resource.
+
+        Parameters
+        ----------
+        resource_type: string
+            Unique resource type identifier
+        resource_id: string
+            Unique resource identifier
+        user: robapi.model.user.UserHandle
+            Handle for user that is accessing the resource
+
+        Returns
+        -------
+        bool
+        """
+        return True
+
+    def has_access(self, resource_type, resource_id, user):
+        """Everyone can access any resource.
+
+        Parameters
+        ----------
+        resource_type: string
+            Unique resource type identifier
+        resource_id: string
+            Unique resource identifier
+        user: robapi.model.user.UserHandle
+            Handle for user that is accessing the resource
+
+        Returns
+        -------
+        bool
+        """
         return True

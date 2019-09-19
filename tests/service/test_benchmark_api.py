@@ -132,7 +132,7 @@ class TestBenchmarkApi(object):
         repo, benchmarks, con = self.init(str(tmpdir))
         # Create one submission and add three results for the first benchmark
         engine = BenchmarkEngine(con=con)
-        submissions = SubmissionManager(con=con)
+        submissions = SubmissionManager(con=con, directory=str(tmpdir))
         # Add two benchmarks and create two submissions for the first benchmark
         # and one submission for the second
         bm = benchmarks[0]

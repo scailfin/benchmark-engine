@@ -61,4 +61,9 @@ def AUTH_LOGINTTL(default_value=None, raise_error=False):
     # return the defined default value
     if val is None:
         val = DEFAULT_LOGINTTL
+    else:
+        try:
+            val = int(val)
+        except ValueError:
+            val = DEFAULT_LOGINTTL
     return val

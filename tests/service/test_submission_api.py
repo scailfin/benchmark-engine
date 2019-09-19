@@ -18,6 +18,7 @@ from robapi.model.submission import SubmissionManager
 from robapi.model.repo import BenchmarkRepository
 from robapi.model.user import UserManager
 from robapi.service.submission import SubmissionService
+from robapi.tests.io import FakeStream
 from robtmpl.template.repo.fs import TemplateFSRepository
 
 import robapi.error as err
@@ -41,8 +42,12 @@ DLABELS = [labels.ID, labels.NAME, labels.LINKS]
 HLABELS = [labels.ID, labels.NAME, labels.MEMBERS, labels.LINKS]
 LLABELS = [labels.SUBMISSIONS, labels.LINKS]
 
+# Mandatory labels for file handles
+FILE_HANDLE = [labels.ID, labels.NAME, labels.CREATED_AT, labels.FILESIZE, labels.LINKS]
+
 # Mandatory HATEOAS relationships in submission handles
 RELS = [hateoas.SELF]
+RELSFH = [hateoas.file(hateoas.DOWNLOAD), hateoas.file(hateoas.DELETE)]
 
 
 class TestSubmissionsApi(object):
@@ -64,7 +69,7 @@ class TestSubmissionsApi(object):
         )
         bm = repo.add_benchmark(name='A', src_dir=TEMPLATE_DIR)
         submissions = SubmissionService(
-            manager=SubmissionManager(con=con),
+            manager=SubmissionManager(con=con, directory=base_dir),
             auth=DefaultAuthPolicy(con=con)
         )
         users = UserManager(con=con)
@@ -131,6 +136,92 @@ class TestSubmissionsApi(object):
             util.validate_doc(doc=s, mandatory_labels=DLABELS)
         with pytest.raises(err.UnauthorizedAccessError):
             service.delete_submission(s2[labels.ID], user_2)
+
+    def test_file_uploads(self, tmpdir):
+        """Test uploading, downloading and listing files that are associated
+        with a benchmark submission.
+        """
+        # Initialize the database and create a single submissions
+        service, users, benchmark, _ = self.init(str(tmpdir))
+        user_1 = users.login_user(USER_1, USER_1)
+        user_3 = users.login_user(USER_3, USER_3)
+        r = service.create_submission(
+            benchmark_id=benchmark.identifier,
+            name='A',
+            user=user_1,
+            members=[USER_1, USER_2]
+        )
+        submission_id = r[labels.ID]
+        # Upload file (from fake streams)
+        r = service.upload_file(
+            submission_id=submission_id,
+            file=FakeStream(data={'A': 1}),
+            file_name='A.json',
+            user=user_1
+        )
+        util.validate_doc(doc=r, mandatory_labels=FILE_HANDLE)
+        serialize.validate_links(doc=r, keys=RELSFH)
+        # Error when uploading without being a member
+        with pytest.raises(err.UnauthorizedAccessError):
+            service.upload_file(
+                submission_id=submission_id,
+                file=FakeStream(data={'A': 1}),
+                file_name='A.json',
+                user=user_3
+            )
+        # Upload second file ad retrieve file listing
+        service.upload_file(
+            submission_id=submission_id,
+            file=FakeStream(data={'A': 1}),
+            file_name='A.json',
+            user=user_1
+        )
+        # Get a listing of files for the submission
+        r = service.list_files(submission_id=submission_id, user=user_1)
+        util.validate_doc(doc=r, mandatory_labels=[labels.FILES, labels.LINKS])
+        files = r[labels.FILES]
+        assert len(files) == 2
+        for f in files:
+            util.validate_doc(doc=f, mandatory_labels=FILE_HANDLE)
+            serialize.validate_links(doc=f, keys=RELSFH)
+        # Error when attempting to list files for submissions without being
+        # a member
+        with pytest.raises(err.UnauthorizedAccessError):
+            service.list_files(submission_id=submission_id, user=user_3)
+        # Get file returns file handle and its serialization
+        fh, r = service.get_file(
+            submission_id=submission_id,
+            file_id=files[0][labels.ID],
+            user=user_1
+        )
+        assert os.path.isfile(fh.filepath)
+        util.validate_doc(doc=r, mandatory_labels=FILE_HANDLE)
+        serialize.validate_links(doc=r, keys=RELSFH)
+        # Error when attempting to access files for submissions without being
+        # a member
+        with pytest.raises(err.UnauthorizedAccessError):
+            service.get_file(
+                submission_id=submission_id,
+                file_id=files[0][labels.ID],
+                user=user_3
+            )
+        # Delete file returns listing of remaining files
+        r = service.delete_file(
+            submission_id=submission_id,
+            file_id=files[0][labels.ID],
+            user=user_1
+        )
+        util.validate_doc(doc=r, mandatory_labels=[labels.FILES, labels.LINKS])
+        files = r[labels.FILES]
+        assert len(files) == 1
+        # Error when attempting to delete files for submissions without being
+        # a member
+        with pytest.raises(err.UnauthorizedAccessError):
+            service.delete_file(
+                submission_id=submission_id,
+                file_id=files[0][labels.ID],
+                user=user_3
+            )
 
     def test_get_submission(self, tmpdir):
         """Test retrieving a submission handle."""

@@ -47,6 +47,9 @@ class SQLiteConnector(DatabaseConnector):
             detect_types=sqlite3.PARSE_DECLTYPES
         )
         con.row_factory = sqlite3.Row
+        # Ensure that LIKE is case sensitive. base on:
+        # https://stackoverflow.com/questions/49039544/sqlite3-case-sensitive-like-in-python-2-7-12
+        con.executescript('PRAGMA case_sensitive_like = on;')
         return con
 
     def info(self, indent=''):

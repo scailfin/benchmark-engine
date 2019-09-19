@@ -10,11 +10,11 @@
 submissions and their results.
 """
 
-from robapi.model.auth import SUBMISSION as RESOURCE_TYPE
 from robapi.serialize.submission import SubmissionSerializer
 from robapi.service.route import UrlFactory
 
 import robapi.error as err
+import robapi.model.auth as res
 
 
 class SubmissionService(object):
@@ -76,7 +76,7 @@ class SubmissionService(object):
         )
         return self.serialize.submission_handle(submission)
 
-    def delete_file(self, team_id, file_id, access_token=None):
+    def delete_file(self, submission_id, file_id, user):
         """Delete file with given identifier that was previously uploaded.
 
         Raises errors if the file or the team is unknown or the user is not
@@ -84,12 +84,12 @@ class SubmissionService(object):
 
         Parameters
         ----------
-        team_id: string
-            Unique team identifier
+        submission_id: string
+            Unique submission identifier
         file_id: string
             Unique file identifier
-        access_token: string, optional
-            User access token
+        user: robapi.model.user.UserHandle
+            Handle for user that requested the deletion
 
         Returns
         -------
@@ -97,26 +97,15 @@ class SubmissionService(object):
 
         Raises
         ------
-        robapi.error.UnauthenticatedAccessError
         robapi.error.UnauthorizedAccessError
         robapi.error.UnknownFileError
-        robapi.error.UnknownTeamError
         """
-        # Ensure that the team exists
-        self.manager.assert_team_exists(team_id)
-        # If the access token is given, ensure that user is a team member.
-        if not access_token is None:
-            self.manager.authorize(
-                access_token=access_token,
-                team_id=team_id,
-                role=role.MEMBER
-            )
-        # Delete file. If result is False (i.e., the file did not exist) an
-        # error is raised
-        fs = Filestore(os.path.join(self.base_dir, team_id))
-        if not fs.delete_file(file_id):
-            raise err.UnknownFileError(file_id)
-        return self.serialize.success()
+        # Raise an error if the user does not have delete rights for the
+        # submission
+        if not self.auth.can_delete(res.FILE, submission_id, user):
+            raise err.UnauthorizedAccessError()
+        self.manager.delete_file(submission_id=submission_id, file_id=file_id)
+        return self.list_files(submission_id=submission_id, user=user)
 
     def delete_submission(self, submission_id, user):
         """Get a given submission and all associated runs and results. If the
@@ -143,50 +132,42 @@ class SubmissionService(object):
         robapi.error.UnknownSubmissionError
         """
         # Raise an error if the user is not authorized to delete the submission
-        if not self.auth.can_delete(RESOURCE_TYPE, submission_id, user):
+        if not self.auth.can_delete(res.SUBMISSION, submission_id, user):
             raise err.UnauthorizedAccessError()
         self.manager.delete_submission(submission_id)
         return self.list_submissions(user)
 
-    def get_file(self, team_id, file_id, access_token=None):
+    def get_file(self, submission_id, file_id, user):
         """Get handle for file with given identifier that was uploaded by the
         team.
 
         Parameters
         ----------
-        team_id: string
-            Unique team identifier
+        submission_id: string
+            Unique submission identifier
         file_id: string
             Unique file identifier
-        access_token: string, optional
-            User access token
+        user: robapi.model.user.UserHandle
+            Handle for user that is accessing the file
 
         Returns
         -------
-        dict
+        robtmpl.io.files.FileHandle, dict
 
         Raises
         ------
-        robapi.error.UnauthenticatedAccessError
         robapi.error.UnauthorizedAccessError
         robapi.error.UnknownFileError
-        robapi.error.UnknownTeamError
         """
-        # Ensure that the team exists
-        self.manager.assert_team_exists(team_id)
-        # If the access token is given, ensure that user is a team member.
-        if not access_token is None:
-            self.manager.authorize(
-                access_token=access_token,
-                team_id=team_id,
-                role=role.MEMBER
-            )
-        # Get serialized file handle. Raise error if the file does not exist.
-        fh = Filestore(os.path.join(self.base_dir, team_id)).get_file(file_id)
-        if fh is None:
-            raise err.UnknownFileError(file_id)
-        return self.serialize.file_handle(fh=fh, team_id=team_id)
-
+        # Raise an error if the user does not have access rights for the
+        # submission files
+        if not self.auth.has_access(res.FILE, submission_id, user):
+            raise err.UnauthorizedAccessError()
+        # Return the file handle and of a serialization
+        fh = self.manager.get_file(submission_id=submission_id, file_id=file_id)
+        doc = self.serialize.file_handle(submission_id=submission_id, fh=fh)
+        return fh, doc
+        
     def get_submission(self, submission_id, user):
         """Get handle for submission with the given identifier. If the user is
         not an administrator or a member of the submission an unauthorized
@@ -209,6 +190,36 @@ class SubmissionService(object):
         """
         submission = self.manager.get_submission(submission_id)
         return self.serialize.submission_handle(submission)
+
+    def list_files(self, submission_id, user):
+        """Get a listing of all files that have been uploaded for the given
+        submission.
+
+        Parameters
+        ----------
+        submission_id: string
+            Unique submission identifier
+        user: robapi.model.user.UserHandle
+            Handle for user that requested the deletion
+
+        Returns
+        -------
+        dict
+
+        Raises
+        ------
+        robapi.error.UnauthorizedAccessError
+        robapi.error.UnknownSubmissionError
+        """
+        # Ensure that the user is authorized to retrieve the file listing for
+        # the given submission
+        if not self.auth.has_access(res.FILE, submission_id, user):
+            raise err.UnauthorizedAccessError()
+        files = self.manager.list_files(submission_id)
+        return self.serialize.file_listing(
+            submission_id=submission_id,
+            files=files
+        )
 
     def list_submissions(self, user):
         """Get a listing of all submissions that a user is a member of.
@@ -254,7 +265,7 @@ class SubmissionService(object):
         robapi.error.UnknownSubmissionError
         """
         # Raise an error if the user is not authorized to modify the submission
-        if not self.auth.can_modify(RESOURCE_TYPE, submission_id, user):
+        if not self.auth.can_modify(res.SUBMISSION, submission_id, user):
             raise err.UnauthorizedAccessError()
         submission = self.manager.update_submission(
             submission_id,
@@ -263,9 +274,8 @@ class SubmissionService(object):
         )
         return self.serialize.submission_handle(submission)
 
-    def upload_file(self, file, file_name, team_id, access_token=None):
-        """Create a new entry from a given file stream. Will copy the given
-        file to a file in the base directory.
+    def upload_file(self, submission_id, file, file_name, user):
+        """Create a file for a given submission.
 
         Parameters
         ----------
@@ -273,25 +283,29 @@ class SubmissionService(object):
             File object (e.g., uploaded via HTTP request)
         file_name: string
             Name of the file
-        team_id: string
-            Unique team identifier
-        access_token: string, optional
-            User access token
+        submission_id: string
+            Unique submission identifier
+        user: robapi.model.user.UserHandle
+            Handle for user that is uploading the file
 
         Returns
         -------
-        robapi.filestore.base.FileHandle
+        dict
+
+        Raises
+        ------
+        robapi.error.ConstraintViolationError
+        robapi.error.UnauthorizedAccessError
+        robapi.error.UnknownSubmissionError
         """
-        # Ensure that the team exists
-        self.manager.assert_team_exists(team_id)
-        # If the access token is given, ensure that user is a team member.
-        if not access_token is None:
-            self.manager.authorize(
-                access_token=access_token,
-                team_id=team_id,
-                role=role.MEMBER
-            )
-        # Store file and return serialized file handle.
-        fs = Filestore(os.path.join(self.base_dir, team_id))
-        fh = fs.upload_stream(file=file, file_name=file_name)
-        return self.serialize.file_handle(fh=fh, team_id=team_id)
+        # Ensure that the user is authorized to modify files for the given
+        # submission
+        if not self.auth.can_modify(res.FILE, submission_id, user):
+            raise err.UnauthorizedAccessError()
+        # Return serialization of the uploaded file
+        fh = self.manager.upload_file(
+            submission_id=submission_id,
+            file=file,
+            file_name=file_name
+        )
+        return self.serialize.file_handle(submission_id=submission_id, fh=fh)

@@ -10,6 +10,10 @@
 as a team in a benchmark, and (2) group the different runs (using different
 parameters for example) that teams execute as part of their participation in
 a benchmark.
+
+Input files that are uploaded by the user for workflow rons are under the
+controll of the submission manager. File are stored on disk in separate
+directories for the respective submissions.
 """
 
 import json
@@ -18,6 +22,7 @@ import os
 from robapi.model.result import ResultRanking
 from robapi.model.run import RunHandle
 from robapi.model.user import UserHandle
+from robtmpl.io.files.base import FileHandle
 from robtmpl.template.schema import ResultSchema
 
 import robapi.model.base as base
@@ -140,16 +145,27 @@ class SubmissionHandle(object):
 class SubmissionManager(object):
     """Manager for submissions from groups of users that participate in a
     benchmark. All information is maintained in an underlying database.
+
+    The submission manager maintains files that are uploaded by the user for
+    workflow runs. Each file is associated with exectly one submissions. Files
+    are maintained in subfolders of a base directory on disk. For each
+    submission a separate directory is created. Within this directory the files
+    are stored using their unique identifier as the file name. The original
+    file name is maintained in the underlying database.
     """
-    def __init__(self, con):
+    def __init__(self, con, directory):
         """Initialize the connection to the database that is used for storage.
 
         Parameters
         ----------
         con: DB-API 2.0 database connection
             Connection to underlying database
+        directory : string
+            Path to the base directory for storing uploaded files
         """
         self.con = con
+        # Create directory if it does not exist
+        self.directory = util.create_dir(os.path.abspath(directory))
 
     def add_member(self, submission_id, user_id):
         """Add a user as member to an existing submission. If the user already
@@ -166,8 +182,6 @@ class SubmissionManager(object):
         ------
         robapi.error.ConstraintViolationError
         """
-        # Query the database to ensure that the user isn't already a member of
-        # the submission.
         sql = 'INSERT INTO submission_member(submission_id, user_id) VALUES(?, ?)'
         try:
             self.con.execute(sql, (submission_id, user_id))
@@ -237,6 +251,29 @@ class SubmissionManager(object):
         # Return the created submission object
         return self.get_submission(identifier)
 
+    def delete_file(self, submission_id, file_id):
+        """Delete file with given identifier. Raises an error if the file does
+        not exist.
+
+        Parameters
+        ----------
+        submission_id: string
+            Unique submission identifier
+        file_id: string
+            Unique file identifier
+
+        Raises
+        ------
+        robapi.error.UnknownFileError
+        """
+        # Get the file handle which contains the path to the file on disk.
+        # This will raise an error if the file does not exist
+        fh = self.get_file(submission_id=submission_id, file_id=file_id)
+        fh.delete()
+        sql = 'DELETE FROM submission_file WHERE file_id = ?'
+        self.con.execute(sql, (file_id,))
+        self.con.commit()
+
     def delete_submission(self, submission_id):
         """Delete the entry for the given submission from the underlying
         database. Note that this will also remove any runs and run results that
@@ -271,6 +308,7 @@ class SubmissionManager(object):
         psql = 'DELETE FROM {} WHERE submission_id = ?'
         stmts.append(psql.format('benchmark_run'))
         stmts.append(psql.format('submission_member'))
+        stmts.append(psql.format('submission_file'))
         stmts.append(psql.format('benchmark_submission'))
         for sql in stmts:
             self.con.execute(sql, (submission_id,))
@@ -283,6 +321,39 @@ class SubmissionManager(object):
                 os.remove(f)
             except OSError:
                 pass
+
+    def get_file(self, submission_id, file_id):
+        """Get handle for file with given identifier. Returns None if no file
+        with given identifier exists.
+
+        Parameters
+        ----------
+        submission_id: string
+            Unique submission identifier
+        file_id: string
+            Unique file identifier
+
+        Returns
+        -------
+        robtmpl.io.files.base.FileHandle
+
+        Raises
+        ------
+        robapi.error.UnknownFileError
+        """
+        # Retrieve file information from disk. Use both identifier to ensure
+        # that the file belongs to the submission. Raise error if the file
+        # does not exist.
+        sql = 'SELECT name FROM submission_file '
+        sql += 'WHERE submission_id = ? AND file_id = ?'
+        row = self.con.execute(sql, (submission_id, file_id)).fetchone()
+        if row is None:
+            raise err.UnknownFileError(file_id)
+        return FileHandle(
+            identifier=file_id,
+            file_name=row['name'],
+            filepath=os.path.join(self.directory, submission_id, file_id)
+        )
 
     def get_results(self, submission_id, order_by=None):
         """Get list of handles for all successful runs in the given submission.
@@ -345,12 +416,9 @@ class SubmissionManager(object):
         ------
         robapi.error.UnknownSubmissionError
         """
-        # Raise error if the given submission identifier is invalid
-        sql = 'SELECT submission_id '
-        sql += 'FROM benchmark_submission '
-        sql += 'WHERE submission_id = ?'
-        if self.con.execute(sql, (submission_id,)).fetchone() is None:
-            raise err.UnknownSubmissionError(submission_id)
+        # Get submission handle to ensure that the submission exists. this will
+        # raise an error if the submission does not exist.
+        self.get_submission(submission_id, load_members=False)
         # Fetch run information from the database and return list of run
         # handles.
         sql = 'SELECT r.run_id, s.benchmark_id, s.submission_id, r.state, '
@@ -363,13 +431,16 @@ class SubmissionManager(object):
             result.append(RunHandle.from_db(doc=row, con=self.con))
         return result
 
-    def get_submission(self, submission_id):
-        """Get handle for submission with the given identifier.
+    def get_submission(self, submission_id, load_members=True):
+        """Get handle for submission with the given identifier. Submission
+        members may be loaded on-demand for performance reasons.
 
         Parameters
         ----------
         identifier: string
             Unique submission identifier
+        load_members: bool, optional
+            Load handles for submission members if True
 
         Returns
         -------
@@ -389,8 +460,11 @@ class SubmissionManager(object):
         name = row['name']
         benchmark_id = row['benchmark_id']
         owner_id = row['owner_id']
-        # Get list of team members
-        members = self.list_members(submission_id, raise_error=False)
+        # Get list of team members (only of load flag is True)
+        if load_members:
+            members = self.list_members(submission_id, raise_error=False)
+        else:
+            members = None
         # Return the submission handle
         return SubmissionHandle(
             identifier=submission_id,
@@ -400,6 +474,40 @@ class SubmissionManager(object):
             members=members,
             manager=self
         )
+
+    def list_files(self, submission_id):
+        """Get list of file handles for all files that have been uploaded to a
+        given submission.
+
+        Parameters
+        ----------
+        submission_id: string
+            Unique submission identifier
+
+        Returns
+        -------
+        list(robtmpl.io.files.base.FileHandle)
+
+        Raises
+        ------
+        robapi.error.UnknownSubmissionError
+        """
+        # Get submission handle to ensure that the submission exists. this will
+        # raise an error if the submission does not exist.
+        self.get_submission(submission_id, load_members=False)
+        # Create the result set from a SQL query of the submission file table
+        sql = 'SELECT file_id, name FROM submission_file '
+        sql += 'WHERE submission_id = ?'
+        rs = list()
+        for row in self.con.execute(sql, (submission_id,)).fetchall():
+            file_id = row['file_id']
+            fh = FileHandle(
+                identifier=file_id,
+                file_name=row['name'],
+                filepath=os.path.join(self.directory, submission_id, file_id)
+            )
+            rs.append(fh)
+        return rs
 
     def list_members(self, submission_id, raise_error=True):
         """Get a list of all users that are member of the given submission.
@@ -551,3 +659,49 @@ class SubmissionManager(object):
             submission.reset_members()
         self.con.commit()
         return submission
+
+    def upload_file(self, submission_id, file, file_name):
+        """Create a new entry from a given file stream. Will copy the given
+        file to a file in the base directory.
+
+        Parameters
+        ----------
+        submission_id: string
+            Unique submission identifier
+        file: werkzeug.datastructures.FileStorage
+            File object (e.g., uploaded via HTTP request)
+        file_name: string
+            Name of the file
+
+        Returns
+        -------
+        robtmpl.io.files.base.FileHandle
+
+        Raises
+        ------
+        robapi.error.ConstraintViolationError
+        robapi.error.UnknownSubmissionError
+        """
+        # Ensure that the given file name is valid
+        base.validate_name(file_name)
+        # Get submission handle to ensure that the submission exists. this will
+        # raise an error if the submission does not exist.
+        self.get_submission(submission_id, load_members=False)
+        # Ensure that the directory for submission uploads exists
+        file_dir = util.create_dir(os.path.join(self.directory, submission_id))
+        # Create a new unique identifier for the file.
+        identifier = util.get_unique_identifier()
+        # Save the file object to the new file path
+        output_file = os.path.join(file_dir, identifier)
+        file.save(output_file)
+        # Insert information into database
+        sql = 'INSERT INTO submission_file(submission_id, file_id, name) '
+        sql += 'VALUES(?, ?, ?)'
+        self.con.execute(sql, (submission_id, identifier, file_name))
+        self.con.commit()
+        # Return handle to uploaded file
+        return FileHandle(
+            identifier=identifier,
+            filepath=output_file,
+            file_name=file_name
+        )

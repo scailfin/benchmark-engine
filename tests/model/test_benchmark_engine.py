@@ -41,9 +41,9 @@ class TestBenchmarkEngine(object):
     """Unit tests for getting and setting run states. Uses a fake backend to
     simulate workflow execution.
     """
-    def init_db(self, base_dir):
-        """Create a fresh database with three users and return an open
-        connection to the database.
+    def init(self, base_dir):
+        """Create a fresh database with three users. Returns instances of the
+        benchmark repository, benchmark engine and the submission manager.
         """
         con = db.init_db(base_dir).connect()
         sql = 'INSERT INTO api_user(user_id, name, secret, active) VALUES(?, ?, ?, ?)'
@@ -51,22 +51,24 @@ class TestBenchmarkEngine(object):
         con.execute(sql, (USER_2, USER_2, pbkdf2_sha256.hash(USER_2), 1))
         con.execute(sql, (USER_3, USER_3, pbkdf2_sha256.hash(USER_3), 0))
         con.commit()
-        return con
+        repo = BenchmarkRepository(
+            con=con,
+            template_repo=TemplateFSRepository(base_dir=base_dir)
+        )
+        engine = BenchmarkEngine(con=con)
+        submissions = SubmissionManager(con=con, directory=base_dir)
+        return repo, engine, submissions
 
     def test_run_error(self, tmpdir):
         """Test state transitions when running a workflow that ends in an
         error state.
         """
-        # Initialize the repository and the benchmark engine
-        con = self.init_db(str(tmpdir))
-        repo = BenchmarkRepository(
-            con=con,
-            template_repo=TemplateFSRepository(base_dir=str(tmpdir))
-        )
-        engine = BenchmarkEngine(con=con)
+        # Initialize the repository, the benchmark engine, and the submission
+        # manager
+        repo, engine, submissions = self.init(str(tmpdir))
         # Add benchmark and create submission
         bm_1 = repo.add_benchmark(name='A', src_dir=TEMPLATE_DIR)
-        submission = SubmissionManager(con=con).create_submission(
+        submission = submissions.create_submission(
             benchmark_id=bm_1.identifier,
             name='A',
             user_id=USER_1
@@ -108,16 +110,12 @@ class TestBenchmarkEngine(object):
 
     def test_run_results(self, tmpdir):
         """Test loading run results into the respective result table."""
-        # Initialize the repository and the benchmark engine
-        con = self.init_db(str(tmpdir))
-        repo = BenchmarkRepository(
-            con=con,
-            template_repo=TemplateFSRepository(base_dir=str(tmpdir))
-        )
-        engine = BenchmarkEngine(con=con)
+        # Initialize the repository, the benchmark engine, and the submission
+        # manager
+        repo, engine, submissions = self.init(str(tmpdir))
         # Add benchmark and create submission
         bm_1 = repo.add_benchmark(name='A', src_dir=TEMPLATE_DIR)
-        submission = SubmissionManager(con=con).create_submission(
+        submission = submissions.create_submission(
             benchmark_id=bm_1.identifier,
             name='A',
             user_id=USER_1
@@ -153,16 +151,12 @@ class TestBenchmarkEngine(object):
         """Test state transitions when running a workflow that ends in a
         success state.
         """
-        # Initialize the repository and the benchmark engine
-        con = self.init_db(str(tmpdir))
-        repo = BenchmarkRepository(
-            con=con,
-            template_repo=TemplateFSRepository(base_dir=str(tmpdir))
-        )
-        engine = BenchmarkEngine(con=con)
+        # Initialize the repository, the benchmark engine, and the submission
+        # manager
+        repo, engine, submissions = self.init(str(tmpdir))
         # Add benchmark and create submission
         bm_1 = repo.add_benchmark(name='A', src_dir=TEMPLATE_DIR)
-        submission = SubmissionManager(con=con).create_submission(
+        submission = submissions.create_submission(
             benchmark_id=bm_1.identifier,
             name='A',
             user_id=USER_1

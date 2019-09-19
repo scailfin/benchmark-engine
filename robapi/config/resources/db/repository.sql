@@ -108,6 +108,16 @@ CREATE TABLE benchmark_submission(
 );
 
 --
+-- Each file that is uploaded for a submission is assigned a unique identifier
+--
+CREATE TABLE submission_file(
+    file_id CHAR(32) NOT NULL,
+    submission_id CHAR(32) NOT NULL REFERENCES benchmark_submission (submission_id),
+    name VARCHAR(512) NOT NULL,
+    PRIMARY KEY(file_id)
+);
+
+--
 -- Maintain information about submissions that a user participates in. There is
 -- a n:m relationship between users and submissions.
 --

@@ -10,12 +10,14 @@
 
 import pytest
 
+from robapi.model.auth import OpenAccessAuth
 from robapi.model.user import UserManager
 from robapi.service.user import UserService
 
 import robapi.serialize.hateoas as hateoas
 import robapi.serialize.labels as labels
 import robapi.tests.db as db
+import robapi.tests.serialize as serialize
 import robtmpl.util as util
 
 
@@ -28,9 +30,16 @@ USER_LOGOUT = [labels.ID, labels.USERNAME, labels.LINKS]
 
 class TestUserApi(object):
     """Test API methods that access and manipulate users."""
+    def init(self, base_dir):
+        """Initialize the dabase and the user manager. Returns the user manager
+        instance.
+        """
+        con = db.init_db(base_dir).connect()
+        return UserService(manager=UserManager(con), auth=OpenAccessAuth(con))
+
     def test_authenticate_user(self, tmpdir):
         """Test login and logout via API."""
-        users = UserService(UserManager(db.init_db(str(tmpdir)).connect()))
+        users = self.init(str(tmpdir))
         # Register a new user that is automatically activated
         users.register_user(username='myuser', password='mypwd', verify=False)
         # Login
@@ -56,7 +65,7 @@ class TestUserApi(object):
             ]
         )
         # Logout
-        r = users.logout_user(access_token)
+        r = users.logout_user(users.auth.authenticate(access_token))
         util.validate_doc(doc=r, mandatory_labels=USER_LOGOUT)
         links = hateoas.deserialize(r[labels.LINKS])
         util.validate_doc(
@@ -67,9 +76,32 @@ class TestUserApi(object):
             ]
         )
 
+    def test_list_users(self, tmpdir):
+        """Test user listings and queries."""
+        users = self.init(str(tmpdir))
+        # Register three active users
+        users.register_user(username='a@user', password='mypwd', verify=False)
+        users.register_user(username='me@user', password='mypwd', verify=False)
+        users.register_user(username='my@user', password='mypwd', verify=False)
+        r = users.list_users()
+        util.validate_doc(doc=r, mandatory_labels=[labels.USERS, labels.LINKS])
+        serialize.validate_links(doc=r, keys=[hateoas.SELF])
+        assert len(r[labels.USERS]) == 3
+        for u in r[labels.USERS]:
+            util.validate_doc(
+                doc=u,
+                mandatory_labels=[labels.ID, labels.USERNAME]
+            )
+        r = users.list_users(query='m')
+        util.validate_doc(doc=r, mandatory_labels=[labels.USERS, labels.LINKS])
+        assert len(r[labels.USERS]) == 2
+        r = users.list_users(query='a')
+        util.validate_doc(doc=r, mandatory_labels=[labels.USERS, labels.LINKS])
+        assert len(r[labels.USERS]) == 1
+
     def test_register_user(self, tmpdir):
         """Test new user registration via API."""
-        users = UserService(UserManager(db.init_db(str(tmpdir)).connect()))
+        users = self.init(str(tmpdir))
         # Register a new user without activating the user
         r = users.register_user(username='myuser', password='mypwd', verify=True)
         util.validate_doc(doc=r, mandatory_labels=USER_LOGOUT)

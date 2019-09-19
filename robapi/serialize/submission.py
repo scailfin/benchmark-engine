@@ -24,6 +24,55 @@ class SubmissionSerializer(object):
         """
         self.urls = urls
 
+    def file_handle(self, submission_id, fh):
+        """Get serialization for a file handle.
+
+        Parameters
+        ----------
+        submission_id: string
+            Unique submission identifier
+        fh: robtmpl.io.files.base.FileHandle
+            File handle
+
+        Returns
+        -------
+        dict
+        """
+        del_url = self.urls.delete_file(submission_id, fh.identifier)
+        dwnld_url = self.urls.download_file(submission_id, fh.identifier)
+        return {
+            labels.ID: fh.identifier,
+            labels.NAME: fh.name,
+            labels.CREATED_AT: fh.created_at.isoformat(),
+            labels.FILESIZE: fh.size,
+            labels.LINKS: hateoas.serialize({
+                hateoas.file(hateoas.DOWNLOAD): dwnld_url,
+                hateoas.file(hateoas.DELETE): del_url
+            })
+        }
+
+    def file_listing(self, submission_id, files):
+        """Get serialization for listing of uploaded files for a given
+        submission.
+
+        Parameters
+        ----------
+        submission_id: string
+            Unique submission identifier
+        files: list(robtmpl.io.files.base.FileHandle)
+            List of file handle
+
+        Returns
+        -------
+        dict
+        """
+        return {
+            labels.FILES: [self.file_handle(submission_id, fh) for fh in files],
+            labels.LINKS: hateoas.serialize({
+                hateoas.SELF: self.urls.list_files(submission_id)
+            })
+        }
+
     def submission_descriptor(self, submission):
         """Get serialization for a submission descriptor. The descriptor
         contains the submission identifier, name, and the base list of HATEOAS

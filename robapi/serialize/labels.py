@@ -15,6 +15,11 @@ NAME = 'name'
 STATE = 'state'
 VERSION = 'version'
 
+# Timestamps
+CREATED_AT = 'createdAt'
+STARTED_AT = 'startedAt'
+FINISHED_AT = 'finishedAt'
+
 # Benchmark resources
 BENCHMARKS = 'benchmarks'
 DESCRIPTION = 'description'
@@ -30,13 +35,10 @@ SUBMISSION = 'submission'
 VALUE = 'value'
 
 # Benchmark runs
-CREATED_AT = 'createdAt'
-STARTED_AT = 'startedAt'
-FINISHED_AT = 'finishedAt'
 MESSAGES = 'messages'
 
 # Files
-CREATED_AT = 'createdAt'
+FILES = 'files'
 FILESIZE = 'size'
 
 # HATEOAS
@@ -53,3 +55,4 @@ OWNER_ID = 'ownerId'
 ACCESS_TOKEN = 'token'
 USERNAME = 'username'
 PASSWORD = 'password'
+USERS = 'users'

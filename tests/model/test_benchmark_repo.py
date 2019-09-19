@@ -34,7 +34,7 @@ TEMPLATE = dict({'A': 1})
 
 class TestBenchmarkRepository(object):
     """Test creating and maintaining benchmarks."""
-    def init_repo(self, base_dir):
+    def init(self, base_dir):
         """Create empty database. Return a test instance of the benchmark
         repository and a connector to the database.
         """
@@ -48,7 +48,7 @@ class TestBenchmarkRepository(object):
     def test_add_benchmark(self, tmpdir):
         """Test adding new benchmarks."""
         # Initialize the repository
-        repo, connector = self.init_repo(str(tmpdir))
+        repo, connector = self.init(str(tmpdir))
         # Add benchmark with minimal information
         bm_1 = repo.add_benchmark(name='A', src_dir=TEMPLATE_DIR)
         assert bm_1.name == 'A'
@@ -111,7 +111,7 @@ class TestBenchmarkRepository(object):
     def test_delete_benchmark(self, tmpdir):
         """Test deleting a benchmarks from the repository"""
         # Initialize the repository
-        repo, connector = self.init_repo(str(tmpdir))
+        repo, connector = self.init(str(tmpdir))
         bm_1 = repo.add_benchmark(name='A', src_dir=TEMPLATE_DIR)
         assert len(repo.list_benchmarks()) == 1
         bm_2 = repo.add_benchmark(
@@ -152,7 +152,7 @@ class TestBenchmarkRepository(object):
     def test_get_benchmark(self, tmpdir):
         """Test retrieving benchmarks from the repository"""
         # Initialize the repository
-        repo, connector = self.init_repo(str(tmpdir))
+        repo, connector = self.init(str(tmpdir))
         bm_1 = repo.add_benchmark(name='A', src_dir=TEMPLATE_DIR)
         bm_2 = repo.add_benchmark(name='B', src_dir=TEMPLATE_DIR)
         assert repo.get_benchmark(bm_1.identifier).identifier == bm_1.identifier

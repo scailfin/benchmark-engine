@@ -37,26 +37,27 @@ class TestBenchmarkResultRanking(object):
     """Unit tests for getting and setting run states. Uses a fake backend to
     simulate workflow execution.
     """
-    def init_db(self, base_dir):
+    def init(self, base_dir):
         """Create a fresh database with three users and return an open
-        connection to the database.
+        connection to the database. Returns instances of the benchmark
+        repository, benchmark engine and the submission manager.
         """
         con = db.init_db(base_dir).connect()
         sql = 'INSERT INTO api_user(user_id, name, secret, active) VALUES(?, ?, ?, ?)'
         con.execute(sql, (USER_1, USER_1, pbkdf2_sha256.hash(USER_1), 1))
         con.commit()
-        return con
+        repo = BenchmarkRepository(
+            con=con,
+            template_repo=TemplateFSRepository(base_dir=base_dir)
+        )
+        engine = BenchmarkEngine(con=con)
+        submissions = SubmissionManager(con=con, directory=base_dir)
+        return repo, engine, submissions
 
     def test_get_results(self, tmpdir):
         """Test get result ranking for different submissions."""
         # Initialize the repository, benchmark engine and submission manager
-        con = self.init_db(str(tmpdir))
-        repo = BenchmarkRepository(
-            con=con,
-            template_repo=TemplateFSRepository(base_dir=str(tmpdir))
-        )
-        engine = BenchmarkEngine(con=con)
-        submissions = SubmissionManager(con=con)
+        repo, engine, submissions = self.init(str(tmpdir))
         # Add two benchmarks and create two submissions for the first benchmark
         # and one submission for the second
         bm1 = repo.add_benchmark(name='A', src_dir=TEMPLATE_DIR)
@@ -151,13 +152,7 @@ class TestBenchmarkResultRanking(object):
     def test_results_for_empty_schema(self, tmpdir):
         """Test get result ranking for template without result schema."""
         # Initialize the repository, benchmark engine and submission manager
-        con = self.init_db(str(tmpdir))
-        repo = BenchmarkRepository(
-            con=con,
-            template_repo=TemplateFSRepository(base_dir=str(tmpdir))
-        )
-        engine = BenchmarkEngine(con=con)
-        submissions = SubmissionManager(con=con)
+        repo, engine, submissions = self.init(str(tmpdir))
         # Add benchmark and create two submissions
         benchmark = repo.add_benchmark(
             name='A',

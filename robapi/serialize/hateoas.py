@@ -54,6 +54,21 @@ def benchmark(rel):
     return 'benchmarks:{}'.format(rel)
 
 
+def file(rel):
+    """Add relationship category prefix for file resources.
+
+    Parameters
+    ----------
+    rel: string
+        Link relationship identifier
+
+    Returns
+    -------
+    string
+    """
+    return 'file:{}'.format(rel)
+
+
 def user(rel):
     """Add relationship category prefix for user resources.
 

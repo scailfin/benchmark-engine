@@ -282,7 +282,34 @@ paths:
 # ------------------------------------------------------------------------------
 # Runs
 # ------------------------------------------------------------------------------
-  /submissions/{submissionId}/run:
+  /submissions/{submissionId}/runs:
+    get:
+      tags:
+      - "run"
+      summary: "Get submission runs"
+      description: "Get listing of all runs for the given submission"
+      operationId: "getSubmissionRuns"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "api_key"
+        in: "header"
+        required: false
+        type: "string"
+      - in: "path"
+        name: "submissionId"
+        description: "Unique submission identifier"
+        required: true
+        type: string
+      responses:
+        200:
+          description: "Run listing"
+          schema:
+            $ref: "#/definitions/RunListing"
+        403:
+          description: "Forbidden operation"
+        404:
+          description: "Unknown submission"
     post:
       tags:
       - "run"
@@ -322,6 +349,33 @@ paths:
         404:
           description: "Unknown submission"
   /runs/{runId}:
+    delete:
+      tags:
+      - "run"
+      summary: "Delete run"
+      description: "Delete an inactive run"
+      operationId: "deleteRun"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "api_key"
+        in: "header"
+        required: false
+        type: "string"
+      - in: "path"
+        name: "runId"
+        description: "Unique run identifier"
+        required: true
+        type: string
+      responses:
+        204:
+          description: "Run listing"
+          schema:
+            $ref: "#/definitions/RunListing"
+        403:
+          description: "Forbidden operation"
+        404:
+          description: "Unknown run"
     get:
       tags:
       - "run"
@@ -385,7 +439,7 @@ paths:
       tags:
       - "file"
       summary: "List files"
-      description: "List all files that have been uploaded for this submission"
+      description: "List all files that have been uploaded for a submission"
       operationId: "listFiles"
       produces:
       - "application/json"
@@ -401,9 +455,11 @@ paths:
         type: string
       responses:
         200:
-          description: "Submission handle"
+          description: "List of uploaded files"
           schema:
-            $ref: "#/definitions/SubmissionHandle"
+            $ref: "#/definitions/FileListing"
+        403:
+          description: "Forbidden operation"
         404:
           description: "Unknown submission"
     post:
@@ -412,6 +468,8 @@ paths:
       summary: "Upload file"
       description: "Upload a file to be available for future submissions"
       operationId: "uploadFile"
+      consumes:
+      - "multipart/form-data"
       produces:
       - "application/json"
       parameters:
@@ -424,28 +482,17 @@ paths:
         description: "Unique submission identifier"
         required: true
         type: string
-      - name: body
-        in: body
-        required: true
-        description: Submission name and members
-        schema:
-            type: object
-            properties:
-              name:
-                type: string
-              members:
-                type: array
-                items:
-                  type: string
       responses:
-        204:
-          description: "Updated submission handle"
+        201:
+          description: "Handle for uploaded file"
           schema:
-            $ref: "#/definitions/SubmissionHandle"
+            $ref: "#/definitions/FileHandle"
         403:
           description: "Forbidden operation"
         404:
-          description: "Unknown submission/user"
+          description: "Unknown submission"
+        413:
+            description: "Uploaded file size exceeds limit"
   /submissions/{submissionId}/files/{fileId}:
     delete:
       tags:
@@ -472,9 +519,9 @@ paths:
         type: string
       responses:
         204:
-          description: "Submission listing"
+          description: "List of uploaded files"
           schema:
-            $ref: "#/definitions/SubmissionListing"
+            $ref: "#/definitions/FileListing"
         403:
           description: "Forbidden operation"
         404:
@@ -486,7 +533,8 @@ paths:
       description: "Download a previously uploaded file"
       operationId: "downloadFile"
       produces:
-      - "application/json"
+      - "text/csv"
+      - "application/gzip"
       parameters:
       - name: "api_key"
         in: "header"
@@ -504,9 +552,7 @@ paths:
         type: string
       responses:
         200:
-          description: "Submission handle"
-          schema:
-            $ref: "#/definitions/SubmissionHandle"
+          description: "File"
         404:
           description: "Unknown submission or file"
 # ------------------------------------------------------------------------------
@@ -872,6 +918,39 @@ definitions:
           $ref: "#/definitions/BenchmarkDescriptor"
       links:
         $ref: "#/definitions/HATEOASLinks"
+  FileHandle:
+    type: object
+    description: "Handle for uploaded file"
+    required:
+    - id
+    - name
+    - createdAt
+    - size
+    - links
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      createdAt:
+        type: string
+      size:
+        type: number
+      links:
+        $ref: "#/definitions/HATEOASLinks"
+  FileListing:
+    type: object
+    description: "List of handles for uploaded files"
+    required:
+    - files
+    - links
+    properties:
+      files:
+        type: array
+        items:
+          $ref: "#/definitions/FileHandle"
+      links:
+        $ref: "#/definitions/HATEOASLinks"
   HATEOASLinks:
     type: array
     description: "List of HATEOAS references"
@@ -905,11 +984,14 @@ definitions:
     description: "Current state of a benchmark run"
     required:
     - id
+    - arguments
     - state
     - links
     properties:
       id:
         type: string
+      arguments:
+        $ref: "#/definitions/RunArguments"
       state:
         type: string
       startedAt:
@@ -920,6 +1002,19 @@ definitions:
         type: array
         items:
           type: string
+      links:
+        $ref: "#/definitions/HATEOASLinks"
+  RunListing:
+    type: object
+    description: "Listing of run handles"
+    required:
+    - runs
+    - links
+    properties:
+      runs:
+        type: array
+        items:
+          $ref: "#/definitions/HATEOASLinks"
       links:
         $ref: "#/definitions/HATEOASLinks"
   ServiceDescriptor:
@@ -1019,6 +1114,7 @@ definitions:
     description: "Identifier and name of a registered users"
     required:
     - users
+    - links
     properties:
       users:
         type: array
@@ -1032,6 +1128,8 @@ definitions:
               type: string
             username:
               type: string
+      links:
+        $ref: "#/definitions/HATEOASLinks"
 externalDocs:
   description: "Find out more about Swagger"
   url: "http://swagger.io"
