@@ -48,9 +48,9 @@ class ServiceSerializer(object):
             labels.VERSION: version,
             labels.LINKS: hateoas.serialize({
                 hateoas.SELF: self.urls.service_descriptor(),
-                hateoas.user(hateoas.LOGIN): self.urls.login(),
-                hateoas.user(hateoas.LOGOUT): self.urls.logout(),
-                hateoas.user(hateoas.REGISTER): self.urls.logout(),
-                hateoas.benchmark(hateoas.LIST): self.urls.list_benchmarks(),
+                hateoas.LOGIN: self.urls.login(),
+                hateoas.LOGOUT: self.urls.logout(),
+                hateoas.REGISTER: self.urls.logout(),
+                hateoas.benchmarks: self.urls.list_benchmarks(),
             })
         }

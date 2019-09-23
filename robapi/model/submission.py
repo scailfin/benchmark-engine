@@ -19,8 +19,8 @@ directories for the respective submissions.
 import json
 import os
 
-from robapi.model.result import ResultRanking
-from robapi.model.run import RunHandle
+from robapi.model.run.result import ResultRanking
+from robapi.model.run.base import RunHandle
 from robapi.model.user import UserHandle
 from robtmpl.io.files.base import FileHandle
 from robtmpl.template.schema import ResultSchema
@@ -96,7 +96,7 @@ class SubmissionHandle(object):
 
         Returns
         -------
-        robapi.model.result.ResultRanking
+        robapi.model.run.result.ResultRanking
 
         Raises
         ------
@@ -109,7 +109,7 @@ class SubmissionHandle(object):
 
         Returns
         -------
-        list(robapi.model.run.RunHandle)
+        list(robapi.model.run.base.RunHandle)
 
         Raises
         ------
@@ -282,7 +282,7 @@ class SubmissionManager(object):
 
         Parameters
         ----------
-        identifier: string
+        submission_id: string
             Unique submission identifier
 
         Raises
@@ -369,7 +369,7 @@ class SubmissionManager(object):
 
         Returns
         -------
-        robapi.model.result.ResultRanking
+        robapi.model.run.result.ResultRanking
 
         Raises
         ------
@@ -410,7 +410,7 @@ class SubmissionManager(object):
 
         Returns
         -------
-        list(robapi.model.run.RunHandle)
+        list(robapi.model.run.base.RunHandle)
 
         Raises
         ------
@@ -422,7 +422,7 @@ class SubmissionManager(object):
         # Fetch run information from the database and return list of run
         # handles.
         sql = 'SELECT r.run_id, s.benchmark_id, s.submission_id, r.state, '
-        sql += 'r.created_at, r.started_at, r.ended_at '
+        sql += 'r.arguments, r.created_at, r.started_at, r.ended_at '
         sql += 'FROM benchmark b, benchmark_submission s, benchmark_run r '
         sql += 'WHERE s.submission_id = r.submission_id AND r.submission_id = ? '
         sql += 'ORDER BY r.created_at'

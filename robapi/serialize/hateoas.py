@@ -17,6 +17,7 @@ import robapi.serialize.labels as labels
 ACTIVATE = 'activate'
 ADD = 'add'
 BENCHMARK = 'benchmark'
+CANCEL = 'cancel'
 CREATE = 'create'
 DELETE = 'delete'
 DOWNLOAD = 'download'
@@ -39,8 +40,9 @@ WHOAMI = 'whoami'
 # ------------------------------------------------------------------------------
 # Reference categories
 # ------------------------------------------------------------------------------
-def benchmark(rel):
-    """Add relationship category prefix for benchmark resources.
+def action(rel):
+    """Add relationship category prefix for references that transform a web
+    reource.
 
     Parameters
     ----------
@@ -51,37 +53,7 @@ def benchmark(rel):
     -------
     string
     """
-    return 'benchmarks:{}'.format(rel)
-
-
-def file(rel):
-    """Add relationship category prefix for file resources.
-
-    Parameters
-    ----------
-    rel: string
-        Link relationship identifier
-
-    Returns
-    -------
-    string
-    """
-    return 'file:{}'.format(rel)
-
-
-def user(rel):
-    """Add relationship category prefix for user resources.
-
-    Parameters
-    ----------
-    rel: string
-        Link relationship identifier
-
-    Returns
-    -------
-    string
-    """
-    return 'users:{}'.format(rel)
+    return 'self:{}'.format(rel)
 
 
 # ------------------------------------------------------------------------------

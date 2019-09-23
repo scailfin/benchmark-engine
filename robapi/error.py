@@ -10,7 +10,10 @@
 engine.
 """
 
-from robtmpl.error import ROBError, UnknownObjectError
+from robtmpl.error import (
+    ROBError, InvalidTemplateError, UnknownObjectError, UnknownParameterError,
+    UnknownRunError
+)
 
 
 # -- Configuration -------------------------------------------------------------
@@ -174,21 +177,24 @@ class UnknownUserError(UnknownObjectError):
 
 # -- Workflows runs ------------------------------------------------------------
 
-class IllegalStateTransitionError(ROBError):
-    """Exception indicating that an attempt to transition the state of a
-    workflow run would result in an illegal sequence of workflow states.
+class InvalidRunStateError(ROBError):
+    """Exception indicating that an attempt to modify the state of a run was
+    made that is not allowed in the current run state or that would result in
+    an illegal sequence of workflow states.
     """
-    def __init__(self, old_state, new_state):
+    def __init__(self, state, resulting_state=None):
         """Initialize the error message.
 
         Parameters
         ----------
-        old_state: robtmpl.workflow.state.base.WorkflowState
-            Previous workflow state
-        new_state: robtmpl.workflow.state.base.WorkflowState
-            Resulting workflow state
+        state: robtmpl.workflow.state.base.WorkflowState
+            Current run state
+        resulting_state: robtmpl.workflow.state.base.WorkflowState, optional
+            Resulting workflow state (for invalid state sequence)
         """
-        msg = 'illegal state transition from {} to {}'
-        super(IllegalStateTransitionError, self).__init__(
-            message=msg.format(old_state.type_id, new_state.type_id)
-        )
+        if resulting_state is None:
+            msg = 'invalid operation for run in state {}'.format(state)
+        else:
+            msg = 'illegal state transition from {} to {}'
+            msg = msg.format(state, resulting_state)
+        super(InvalidRunStateError, self).__init__(message=msg)

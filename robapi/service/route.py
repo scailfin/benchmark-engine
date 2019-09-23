@@ -36,6 +36,7 @@ class UrlFactory(object):
             self.base_url = self.base_url[:-1]
         # Set base Url for resource related requests
         self.benchmark_base_url = self.base_url + '/benchmarks'
+        self.run_base_url = self.base_url + '/runs'
         self.submission_base_url = self.base_url + '/submissions'
         self.user_base_url = self.base_url + '/users'
 
@@ -62,6 +63,20 @@ class UrlFactory(object):
         """
         return self.get_team(team_id) + '/members'
 
+    def cancel_run(self, run_id):
+        """Url to POST cancel request for benchmark run.
+
+        Parameters
+        ----------
+        run_id: string
+            Unique run identifier
+
+        Returns
+        -------
+        string
+        """
+        return self.get_run(run_id) + '/cancel'
+
     def delete_file(self, submission_id, file_id):
         """Url to DELETE a previously uploaded file.
 
@@ -77,6 +92,20 @@ class UrlFactory(object):
         string
         """
         return self.list_files(submission_id) + '/' + file_id
+
+    def delete_run(self, run_id):
+        """Url to DELETE a benchmark run.
+
+        Parameters
+        ----------
+        run_id: string
+            Unique run identifier
+
+        Returns
+        -------
+        string
+        """
+        return self.get_run(run_id)
 
     def download_file(self, submission_id, file_id):
         """Url to GET a previously uploaded file.
@@ -121,6 +150,20 @@ class UrlFactory(object):
         string
         """
         return self.get_benchmark(benchmark_id) + '/leaderboard'
+
+    def get_run(self, run_id):
+        """Url to GET benchmark run handle.
+
+        Parameters
+        ----------
+        run_id: string
+            Unique run identifier
+
+        Returns
+        -------
+        string
+        """
+        return self.run_base_url + '/' + run_id
 
     def get_submission(self, submission_id):
         """Url to GET submission handle.
@@ -167,6 +210,20 @@ class UrlFactory(object):
         string
         """
         return self.submission_base_url
+
+    def list_runs(self, submission_id):
+        """Url to GET listing of benchmark runs for a given submission.
+
+        Parameters
+        ----------
+        submission_id: string
+            Unique submission identifier
+
+        Returns
+        -------
+        string
+        """
+        return self.get_submission(submission_id) + '/runs'
 
     def list_users(self):
         """Url to GET listing of registered users.

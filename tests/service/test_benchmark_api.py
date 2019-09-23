@@ -12,10 +12,11 @@ import os
 
 from passlib.hash import pbkdf2_sha256
 
-from robapi.model.engine import BenchmarkEngine
+from robapi.model.benchmark.engine import BenchmarkEngine
 from robapi.model.submission import SubmissionManager
-from robapi.model.repo import BenchmarkRepository
+from robapi.model.benchmark.repo import BenchmarkRepository
 from robapi.service.benchmark import BenchmarkService
+from robapi.tests.benchmark import StateEngine
 from robtmpl.template.repo.fs import TemplateFSRepository
 
 import robapi.serialize.hateoas as hateoas
@@ -34,7 +35,7 @@ TEMPLATE_DIR = os.path.join(DIR, '../.files/templates/helloworld')
 USER_1 = util.get_unique_identifier()
 
 # Mandatory HATEOAS relationships in benchmark handles and descriptors
-RELS = [hateoas.SELF, hateoas.benchmark(hateoas.LEADERBOARD)]
+RELS = [hateoas.SELF, hateoas.LEADERBOARD]
 
 
 class TestBenchmarkApi(object):
@@ -131,7 +132,7 @@ class TestBenchmarkApi(object):
         """Test get benchmark leaderboard."""
         repo, benchmarks, con = self.init(str(tmpdir))
         # Create one submission and add three results for the first benchmark
-        engine = BenchmarkEngine(con=con)
+        engine = BenchmarkEngine(con=con, backend=StateEngine())
         submissions = SubmissionManager(con=con, directory=str(tmpdir))
         # Add two benchmarks and create two submissions for the first benchmark
         # and one submission for the second

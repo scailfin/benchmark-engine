@@ -338,7 +338,14 @@ paths:
         required: true
         description: Run arguments
         schema:
-            $ref: '#/definitions/RunArguments'
+          type: object
+          required:
+          - arguments
+          properties:
+            arguments:
+              type: array
+              items:
+                $ref: '#/definitions/RunArgument'
       responses:
         200:
           description: "Run state"
@@ -969,19 +976,42 @@ definitions:
       href:
         type: string
         description: "HTTP link"
-  RunArguments:
+  RunArgument:
     type: object
-    description: "Arguments for a new benchmark run"
+    description: "Argument for a new benchmark run"
     required:
-    - arguments
+    - key
+    - value
     properties:
-      arguments:
+      key:
+        type: string
+      value:
+        type: string
+  RunDescriptor:
+    type: object
+    description: "Descriptor containing basic information for benchmark run"
+    required:
+    - id
+    - state
+    - links
+    properties:
+      id:
+        type: string
+      state:
+        type: string
+      startedAt:
+        type: string
+      finishedAt:
+        type: string
+      messages:
         type: array
         items:
-          type: object
+          type: string
+      links:
+        $ref: "#/definitions/HATEOASLinks"
   RunHandle:
     type: object
-    description: "Current state of a benchmark run"
+    description: "Handle containing all information for a benchmark run"
     required:
     - id
     - arguments
@@ -991,7 +1021,9 @@ definitions:
       id:
         type: string
       arguments:
-        $ref: "#/definitions/RunArguments"
+        type: array
+        items:
+          $ref: "#/definitions/RunArgument"
       state:
         type: string
       startedAt:
@@ -1014,7 +1046,7 @@ definitions:
       runs:
         type: array
         items:
-          $ref: "#/definitions/HATEOASLinks"
+          $ref: "#/definitions/RunDescriptor"
       links:
         $ref: "#/definitions/HATEOASLinks"
   ServiceDescriptor:

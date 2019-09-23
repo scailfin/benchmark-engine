@@ -15,7 +15,7 @@ from passlib.hash import pbkdf2_sha256
 
 from robapi.model.auth import DefaultAuthPolicy
 from robapi.model.submission import SubmissionManager
-from robapi.model.repo import BenchmarkRepository
+from robapi.model.benchmark.repo import BenchmarkRepository
 from robapi.model.user import UserManager
 from robapi.service.submission import SubmissionService
 from robapi.tests.io import FakeStream
@@ -47,7 +47,7 @@ FILE_HANDLE = [labels.ID, labels.NAME, labels.CREATED_AT, labels.FILESIZE, label
 
 # Mandatory HATEOAS relationships in submission handles
 RELS = [hateoas.SELF]
-RELSFH = [hateoas.file(hateoas.DOWNLOAD), hateoas.file(hateoas.DELETE)]
+RELSFH = [hateoas.action(hateoas.DOWNLOAD), hateoas.action(hateoas.DELETE)]
 
 
 class TestSubmissionsApi(object):

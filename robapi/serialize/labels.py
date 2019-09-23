@@ -35,6 +35,7 @@ SUBMISSION = 'submission'
 VALUE = 'value'
 
 # Benchmark runs
+ARGUMENTS = 'arguments'
 MESSAGES = 'messages'
 
 # Files
@@ -50,6 +51,7 @@ REL = 'rel'
 SUBMISSIONS = 'submissions'
 MEMBERS = 'members'
 OWNER_ID = 'ownerId'
+RUNS = 'runs'
 
 # Users
 ACCESS_TOKEN = 'token'

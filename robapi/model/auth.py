@@ -25,6 +25,7 @@ import robapi.error as err
 module.
 """
 FILE = 'file'
+RUN = 'run'
 SUBMISSION = 'submission'
 
 
@@ -189,6 +190,11 @@ class DefaultAuthPolicy(Auth):
                 submission_id=resource_id,
                 user_id=user.identifier
             )
+        elif resource_type == RUN:
+            return self.is_run_member(
+                run_id=resource_id,
+                user_id=user.identifier
+            )
         # By default a user has access to all resources that are not controlled
         # by the policy
         return True
@@ -216,9 +222,36 @@ class DefaultAuthPolicy(Auth):
                 submission_id=resource_id,
                 user_id=user.identifier
             )
+        elif resource_type == RUN:
+            return self.is_run_member(
+                run_id=resource_id,
+                user_id=user.identifier
+            )
         # By default a user has access to all resources that are not controlled
         # by the policy
         return True
+
+    def is_run_member(self, run_id, user_id):
+        """Test if the user is member of the submission that the given run
+        belongs to.
+
+        Parameters
+        ----------
+        run_id: string
+            Unique run identifier
+        user_id: string
+            Unique user identifier
+
+        Returns
+        -------
+        bool
+        """
+        sql = 'SELECT r.submission_id '
+        sql += 'FROM submission_run r, submission_member s '
+        sql += 'WHERE r.submission_id = s.submission_id AND '
+        sql += 'r.run_id = ? AND user_id = ?'
+        params = (run_id, user_id)
+        return not self.con.execute(sql, params).fetchone() is None
 
     def is_submission_member(self, submission_id, user_id):
         """Test if the user is member of the given submission.
@@ -229,7 +262,7 @@ class DefaultAuthPolicy(Auth):
             Unique submission identifier
         user_id: string
             Unique user identifier
-            
+
         Returns
         -------
         bool

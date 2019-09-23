@@ -13,7 +13,8 @@ import os
 import pytest
 import sqlite3
 
-from robapi.model.repo import BenchmarkHandle, BenchmarkRepository
+from robapi.model.benchmark.base import BenchmarkHandle
+from robapi.model.benchmark.repo import BenchmarkRepository
 from robapi.tests.repo import DictRepo
 from robtmpl.template.schema import ResultSchema
 from robtmpl.template.repo.fs import TemplateFSRepository

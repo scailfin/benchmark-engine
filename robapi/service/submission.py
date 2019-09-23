@@ -167,7 +167,7 @@ class SubmissionService(object):
         fh = self.manager.get_file(submission_id=submission_id, file_id=file_id)
         doc = self.serialize.file_handle(submission_id=submission_id, fh=fh)
         return fh, doc
-        
+
     def get_submission(self, submission_id, user):
         """Get handle for submission with the given identifier. If the user is
         not an administrator or a member of the submission an unauthorized

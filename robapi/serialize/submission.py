@@ -6,14 +6,14 @@
 # ROB is free software; you can redistribute it and/or modify it under the
 # terms of the MIT License; see LICENSE file for more details.
 
-"""Serializer for team resources."""
+"""Serializer for benchmark submissions."""
 
 import robapi.serialize.hateoas as hateoas
 import robapi.serialize.labels as labels
 
 
 class SubmissionSerializer(object):
-    """Serializer for team resources."""
+    """Serializer for benchmark submissions."""
     def __init__(self, urls):
         """Initialize the reference to the Url factory.
 
@@ -46,8 +46,8 @@ class SubmissionSerializer(object):
             labels.CREATED_AT: fh.created_at.isoformat(),
             labels.FILESIZE: fh.size,
             labels.LINKS: hateoas.serialize({
-                hateoas.file(hateoas.DOWNLOAD): dwnld_url,
-                hateoas.file(hateoas.DELETE): del_url
+                hateoas.action(hateoas.DOWNLOAD): dwnld_url,
+                hateoas.action(hateoas.DELETE): del_url
             })
         }
 

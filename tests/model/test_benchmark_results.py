@@ -13,8 +13,8 @@ import pytest
 
 from passlib.hash import pbkdf2_sha256
 
-from robapi.model.engine import BenchmarkEngine
-from robapi.model.repo import BenchmarkRepository
+from robapi.model.benchmark.engine import BenchmarkEngine
+from robapi.model.benchmark.repo import BenchmarkRepository
 from robapi.model.submission import SubmissionManager
 from robapi.tests.benchmark import StateEngine
 from robtmpl.template.schema import SortColumn

@@ -13,7 +13,7 @@ import pytest
 
 from passlib.hash import pbkdf2_sha256
 
-from robapi.model.repo import BenchmarkRepository
+from robapi.model.benchmark.repo import BenchmarkRepository
 from robapi.model.submission import SubmissionManager
 from robapi.tests.io import FakeStream
 from robtmpl.template.repo.fs import TemplateFSRepository

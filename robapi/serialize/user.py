@@ -38,7 +38,7 @@ class UserSerializer(object):
         dict
         """
         doc = self.user(user)
-        link = {hateoas.user(hateoas.ACTIVATE): self.urls.activate_user()}
+        link = {hateoas.action(hateoas.ACTIVATE): self.urls.activate_user()}
         doc[labels.LINKS].append(hateoas.serialize(link)[0])
         return doc
 
@@ -71,12 +71,12 @@ class UserSerializer(object):
         dict
         """
         doc = {labels.ID: user.identifier, labels.USERNAME: user.name}
-        links = {hateoas.user(hateoas.WHOAMI): self.urls.whoami()}
+        links = {hateoas.WHOAMI: self.urls.whoami()}
         if user.is_logged_in():
             doc[labels.ACCESS_TOKEN] = user.api_key
-            links[hateoas.user(hateoas.LOGOUT)] = self.urls.logout()
+            links[hateoas.action(hateoas.LOGOUT)] = self.urls.logout()
         else:
-            links[hateoas.user(hateoas.LOGIN)] = self.urls.login()
+            links[hateoas.action(hateoas.LOGIN)] = self.urls.login()
         doc[labels.LINKS] = hateoas.serialize(links)
         return doc
 

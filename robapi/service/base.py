@@ -24,8 +24,8 @@ from robapi.service.route import UrlFactory
 from robapi.api.serialize.base import Serializer
 from robapi.api.team import TeamApi
 from robapi.api.user import UserApi
-from robapi.model.engine import BenchmarkEngine
-from robapi.model.repo import BenchmarkRepository
+from robapi.model.benchmark.engine import BenchmarkEngine
+from robapi.model.benchmark.repo import BenchmarkRepository
 from robapi.db import DatabaseDriver
 from robapi.model.user.team.manager import TeamManager
 from robapi.model.user.manager import UserManager
@@ -64,7 +64,7 @@ class EngineApi(object):
         ----------
         con: DB-API 2.0 database connection, optional
             Connection to underlying database
-        backend: robapi.model.engine.BenchmarkEngine, optional
+        backend: robapi.model.benchmark.engine.BenchmarkEngine, optional
             Workflow execution backend
         base_dir: string, optional
             Path to directory to store uploaded and downloaded files

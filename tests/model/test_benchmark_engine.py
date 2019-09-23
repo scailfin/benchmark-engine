@@ -13,10 +13,13 @@ import pytest
 
 from passlib.hash import pbkdf2_sha256
 
-from robapi.model.engine import BenchmarkEngine
-from robapi.model.repo import BenchmarkRepository
+from robapi.model.benchmark.engine import BenchmarkEngine
+from robapi.model.benchmark.repo import BenchmarkRepository
 from robapi.model.submission import SubmissionManager
 from robapi.tests.benchmark import StateEngine
+from robtmpl.io.files.base import FileHandle
+from robtmpl.template.parameter.base import TemplateParameter
+from robtmpl.template.parameter.value import InputFile, TemplateArgument
 from robtmpl.template.schema import SortColumn
 from robtmpl.template.repo.fs import TemplateFSRepository
 from robtmpl.workflow.resource import FileResource
@@ -25,6 +28,7 @@ from robtmpl.workflow.state.base import StatePending, StateRunning
 import robapi.error as err
 import robapi.tests.benchmark as wf
 import robapi.tests.db as db
+import robtmpl.template.parameter.declaration as pd
 import robtmpl.util as util
 
 
@@ -59,6 +63,63 @@ class TestBenchmarkEngine(object):
         submissions = SubmissionManager(con=con, directory=base_dir)
         return repo, engine, submissions
 
+    def test_cancel_and_delete_run(self, tmpdir):
+        """Test deleting runs."""
+        # Initialize the repository, the benchmark engine, and the submission
+        # manager
+        repo, engine, submissions = self.init(str(tmpdir))
+        # Add benchmark and create submission
+        bm_1 = repo.add_benchmark(name='A', src_dir=TEMPLATE_DIR)
+        submission = submissions.create_submission(
+            benchmark_id=bm_1.identifier,
+            name='A',
+            user_id=USER_1
+        )
+        # Start a new run
+        run = engine.start_run(
+            submission_id=submission.identifier,
+            template=bm_1.get_template(),
+            source_dir='/dev/null',
+            arguments=dict()
+        )
+        # Errors when trying to delete an active run
+        with pytest.raises(err.InvalidRunStateError):
+            engine.delete_run(run.identifier)
+        # Cancel the run
+        run = engine.cancel_run(run.identifier)
+        assert run.is_canceled()
+        # Error when trying to cancel an inactive run
+        with pytest.raises(err.InvalidRunStateError):
+            engine.cancel_run(run.identifier)
+        # Delete the run
+        engine.delete_run(run.identifier)
+        # Error when deleting a non-existing run
+        with pytest.raises(err.UnknownRunError):
+            engine.delete_run(run.identifier)
+        # Delete a successful run that created result files
+        run = engine.start_run(
+            submission_id=submission.identifier,
+            template=bm_1.get_template(),
+            source_dir='/dev/null',
+            arguments=dict()
+        )
+        run = engine.update_run(run_id=run.identifier, state=run.state.start())
+        result_file = os.path.join(str(tmpdir), 'run_result.json')
+        util.write_object(
+            filename=result_file,
+            obj={'max_len': 1, 'avg_count': 2.1, 'max_line': 'R0'}
+        )
+        file_id = bm_1.get_template().get_schema().result_file_id
+        files = {
+            file_id:
+            FileResource(identifier=file_id, filename=result_file)
+        }
+        state = run.state.success(files=files)
+        engine.update_run(run_id=run.identifier, state=state)
+        assert os.path.isfile(result_file)
+        engine.delete_run(run.identifier)
+        assert not os.path.isfile(result_file)
+
     def test_run_error(self, tmpdir):
         """Test state transitions when running a workflow that ends in an
         error state.
@@ -86,7 +147,7 @@ class TestBenchmarkEngine(object):
         run = engine.get_run(run_id=run_id)
         assert run.state.is_running()
         # Errors for illegal state transitions
-        with pytest.raises(err.IllegalStateTransitionError):
+        with pytest.raises(err.InvalidRunStateError):
             engine.update_run(run_id=run_id, state=StatePending())
         # Set run into error state
         messages = ['there', 'was', 'an', 'error']
@@ -98,13 +159,13 @@ class TestBenchmarkEngine(object):
         assert run.state.is_error()
         assert run.state.messages == messages
         # Errors for illegal state transitions
-        with pytest.raises(err.IllegalStateTransitionError):
+        with pytest.raises(err.InvalidRunStateError):
             engine.update_run(run_id=run_id, state=StatePending())
-        with pytest.raises(err.IllegalStateTransitionError):
+        with pytest.raises(err.InvalidRunStateError):
             engine.update_run(run_id=run_id, state=StatePending().start())
-        with pytest.raises(err.IllegalStateTransitionError):
+        with pytest.raises(err.InvalidRunStateError):
             engine.update_run(run_id=run_id, state=StatePending().start().error())
-        with pytest.raises(err.IllegalStateTransitionError):
+        with pytest.raises(err.InvalidRunStateError):
             engine.update_run(run_id=run_id, state=StatePending().start().success())
 
     def test_run_results(self, tmpdir):
@@ -161,15 +222,48 @@ class TestBenchmarkEngine(object):
             user_id=USER_1
         )
         # Run workflow using fake engine
+        f1 = InputFile(
+            f_handle=FileHandle(
+                filepath='source/file1.txt',
+                identifier='F1',
+                file_name='myfile.txt'
+            ),
+            target_path='target/file1.txt'
+        )
+        p_name = TemplateParameter(pd.parameter_declaration(identifier='name'))
+        p_file = TemplateParameter(
+            pd.parameter_declaration(identifier='file', data_type=pd.DT_FILE)
+        )
         run = engine.start_run(
             submission_id=submission.identifier,
             template=bm_1.get_template(),
             source_dir='/dev/null',
-            arguments=dict()
+            arguments={
+                'name': TemplateArgument(parameter=p_name, value='MyName'),
+                'file': TemplateArgument(parameter=p_file, value=f1)
+            }
         )
         run_id = run.identifier
         assert run.state.is_pending()
+        util.validate_doc(run.arguments, mandatory_labels=['name', 'file'])
+        util.validate_doc(
+            run.arguments['file'],
+            mandatory_labels=['fileHandle', 'targetPath']
+        )
+        util.validate_doc(
+            run.arguments['file']['fileHandle'],
+            mandatory_labels=['filepath', 'identifier', 'filename']
+        )
         run = engine.get_run(run_id=run_id)
+        util.validate_doc(run.arguments, mandatory_labels=['name', 'file'])
+        util.validate_doc(
+            run.arguments['file'],
+            mandatory_labels=['fileHandle', 'targetPath']
+        )
+        util.validate_doc(
+            run.arguments['file']['fileHandle'],
+            mandatory_labels=['filepath', 'identifier', 'filename']
+        )
         assert run.state.is_pending()
         engine.update_run(run_id=run_id, state=run.state.start())
         run = engine.get_run(run_id=run_id)
@@ -190,11 +284,11 @@ class TestBenchmarkEngine(object):
         assert run.state.is_success()
         assert 'results/analytics.json' in run.state.files
         # Errors for illegal state transitions
-        with pytest.raises(err.IllegalStateTransitionError):
+        with pytest.raises(err.InvalidRunStateError):
             engine.update_run(run_id=run_id, state=StatePending())
-        with pytest.raises(err.IllegalStateTransitionError):
+        with pytest.raises(err.InvalidRunStateError):
             engine.update_run(run_id=run_id, state=StatePending().start())
-        with pytest.raises(err.IllegalStateTransitionError):
+        with pytest.raises(err.InvalidRunStateError):
             engine.update_run(run_id=run_id, state=StatePending().start().error())
-        with pytest.raises(err.IllegalStateTransitionError):
+        with pytest.raises(err.InvalidRunStateError):
             engine.update_run(run_id=run_id, state=StatePending().start().success())

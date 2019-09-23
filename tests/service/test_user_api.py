@@ -50,8 +50,8 @@ class TestUserApi(object):
         util.validate_doc(
             doc=links,
             mandatory_labels=[
-                hateoas.user(hateoas.WHOAMI),
-                hateoas.user(hateoas.LOGOUT)
+                hateoas.WHOAMI,
+                hateoas.action(hateoas.LOGOUT)
             ]
         )
         access_token = r[labels.ACCESS_TOKEN]
@@ -61,8 +61,8 @@ class TestUserApi(object):
         util.validate_doc(
             doc=links,
             mandatory_labels=[
-                hateoas.user(hateoas.WHOAMI),
-                hateoas.user(hateoas.LOGOUT)
+                hateoas.WHOAMI,
+                hateoas.action(hateoas.LOGOUT)
             ]
         )
         # Logout
@@ -72,8 +72,8 @@ class TestUserApi(object):
         util.validate_doc(
             doc=links,
             mandatory_labels=[
-                hateoas.user(hateoas.WHOAMI),
-                hateoas.user(hateoas.LOGIN)
+                hateoas.WHOAMI,
+                hateoas.action(hateoas.LOGIN)
             ]
         )
 
@@ -110,9 +110,9 @@ class TestUserApi(object):
         util.validate_doc(
             doc=links,
             mandatory_labels=[
-                hateoas.user(hateoas.WHOAMI),
-                hateoas.user(hateoas.LOGIN),
-                hateoas.user(hateoas.ACTIVATE)
+                hateoas.WHOAMI,
+                hateoas.action(hateoas.LOGIN),
+                hateoas.action(hateoas.ACTIVATE)
             ]
         )
         # Activate the user
@@ -122,8 +122,8 @@ class TestUserApi(object):
         util.validate_doc(
             doc=links,
             mandatory_labels=[
-                hateoas.user(hateoas.WHOAMI),
-                hateoas.user(hateoas.LOGIN)
+                hateoas.WHOAMI,
+                hateoas.action(hateoas.LOGIN)
             ]
         )
         # Register a new user that is automatically activated
@@ -133,8 +133,8 @@ class TestUserApi(object):
         util.validate_doc(
             doc=links,
             mandatory_labels=[
-                hateoas.user(hateoas.WHOAMI),
-                hateoas.user(hateoas.LOGIN)
+                hateoas.WHOAMI,
+                hateoas.action(hateoas.LOGIN)
             ]
         )
 

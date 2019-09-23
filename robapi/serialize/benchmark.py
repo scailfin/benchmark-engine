@@ -33,7 +33,7 @@ class BenchmarkSerializer(object):
 
         Parameters
         ----------
-        benchmark: robapi.model.repo.BenchmarkHandle
+        benchmark: robapi.model.benchmark.base.BenchmarkHandle
             Competition handle
 
         Returns
@@ -47,7 +47,7 @@ class BenchmarkSerializer(object):
             labels.NAME: benchmark.name,
             labels.LINKS: hateoas.serialize({
                 hateoas.SELF: self.urls.get_benchmark(benchmark_id),
-                hateoas.benchmark(hateoas.LEADERBOARD): leaderboard_url
+                hateoas.LEADERBOARD: leaderboard_url
             })
         }
         if benchmark.has_description():
@@ -81,7 +81,7 @@ class BenchmarkSerializer(object):
         ----------
         benchmark_id: string
             Unique benchmark identifier
-        leaderboard: robapi.model.result.ResultRanking
+        leaderboard: robapi.model.run.result.ResultRanking
             List of entries in the benchmark leaderboard
 
         Returns
@@ -125,7 +125,7 @@ class BenchmarkSerializer(object):
 
         Parameters
         ----------
-        benchmarks: list(robapi.model.repo.BenchmarkHandle)
+        benchmarks: list(robapi.model.benchmark.base.BenchmarkHandle)
             List of benchmark descriptors
 
         Returns

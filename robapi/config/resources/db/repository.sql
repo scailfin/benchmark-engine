@@ -128,7 +128,8 @@ CREATE TABLE submission_member(
 );
 
 --
--- Benchmark runs maintain the run status and timestamps
+-- Benchmark runs maintain the run status, the provided argument values for
+-- workflow parameters, and timestamps
 --
 CREATE TABLE benchmark_run(
     run_id CHAR(32) NOT NULL,
@@ -137,6 +138,7 @@ CREATE TABLE benchmark_run(
     created_at CHAR(26) NOT NULL,
     started_at CHAR(26),
     ended_at CHAR(26),
+    arguments TEXT NOT NULL,
     PRIMARY KEY(run_id)
 );
 

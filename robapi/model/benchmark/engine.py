@@ -11,14 +11,15 @@ maintaining the state of running workflows.
 """
 
 import json
+import os
 
-from robapi.model.run import RunHandle
+from robapi.model.run.base import RunHandle
+from robtmpl.template.parameter.value import InputFile
 from robtmpl.template.schema import ResultSchema
 from robtmpl.workflow.state.base import StatePending
 
 import robapi.error as err
 import robtmpl.util as util
-import robtmpl.error as tmplerr
 
 
 class BenchmarkEngine(object):
@@ -44,6 +45,74 @@ class BenchmarkEngine(object):
         self.con = con
         self.backend = backend
 
+    def cancel_run(self, run_id):
+        """Cancel the given run. This will raise an error if the run is not in
+        an active state.
+
+        Parameters
+        ----------
+        run_id: string
+            Unique submission identifier
+
+        Raises
+        ------
+        robapi.error.UnknownRunError
+        robapi.error.InvalidRunStateError
+        """
+        # Get the run handle. This will raise an error if the run is unknown
+        run = self.get_run(run_id)
+        # Raise an error if the run is not in an active state
+        if not run.is_active():
+            raise err.InvalidRunStateError(run.state)
+        # Cancel execution at the backend
+        self.backend.cancel_run(run_id)
+        # Update the run state and return the run handle
+        return self.update_run(run_id=run_id, state=run.state.cancel())
+
+    def delete_run(self, run_id):
+        """Delete the entry for the given run from the underlying database. This
+        will also remove any run results and result file resources.
+
+        Deleting a run will raise an error if the run is in an active state.
+
+        Parameters
+        ----------
+        run_id: string
+            Unique submission identifier
+
+        Raises
+        ------
+        robapi.error.UnknownRunError
+        robapi.error.InvalidRunStateError
+        """
+        # Get the handle for the runs to get the list of file resources that
+        # have been created (if the run was executed successfully). This will
+        # raise an error if the run is unknown.
+        run = self.get_run(run_id)
+        # Raise an exception if the run is active
+        if run.is_active():
+            raise err.InvalidRunStateError(run.state)
+        # Start by deleting all rows in the database that belong to the run.
+        # Delete files after the database changes are committed since there is
+        # no rollback option for file deletes.
+        psql = 'DELETE FROM {} WHERE run_id = ?'
+        stmts = list()
+        stmts.append(psql.format('run_result_file'))
+        stmts.append(psql.format('run_error_log'))
+        stmts.append(psql.format('benchmark_run'))
+        for sql in stmts:
+            self.con.execute(sql, (run_id,))
+        self.con.commit()
+        # Delete all file resources
+        if run.is_success():
+            for fh in run.get_files():
+                # Don't raise an error if the file does not exist or cannot be
+                # removed
+                try:
+                    os.remove(fh.filename)
+                except OSError:
+                    pass
+
     def get_run(self, run_id):
         """Get handle for the given run. The run state and associated submission
         and benchmark are read from the underlying database. This method does
@@ -56,21 +125,21 @@ class BenchmarkEngine(object):
 
         Returns
         -------
-        robapi.model.run.RunHandle
+        robapi.model.run.base.RunHandle
 
         Raises
         ------
-        robtmpl.error.UnknownRunError
+        robapi.error.UnknownRunError
         """
         # Fetch run information from the database. If the result is None the
         # run is unknown and an error is raised.
         sql = 'SELECT r.run_id, s.benchmark_id, s.submission_id, r.state, '
-        sql += 'r.created_at, r.started_at, r.ended_at '
+        sql += 'r.arguments, r.created_at, r.started_at, r.ended_at '
         sql += 'FROM benchmark_submission s, benchmark_run r '
         sql += 'WHERE s.submission_id = r.submission_id AND r.run_id = ?'
         row = self.con.execute(sql, (run_id,)).fetchone()
         if row is None:
-            raise tmplerr.UnknownRunError(run_id)
+            raise err.UnknownRunError(run_id)
         return RunHandle.from_db(doc=row, con=self.con)
 
     def start_run(self, submission_id, template, source_dir, arguments):
@@ -89,7 +158,7 @@ class BenchmarkEngine(object):
 
         Returns
         -------
-        robapi.model.run.RunHandle
+        robapi.model.run.base.RunHandle
 
         Raises
         ------
@@ -100,10 +169,14 @@ class BenchmarkEngine(object):
         # Create an initial entry in the run table for the pending run.
         state = StatePending()
         sql = 'INSERT INTO benchmark_run('
-        sql += 'run_id, submission_id, state, created_at'
-        sql += ') VALUES(?, ?, ?, ?)'
+        sql += 'run_id, submission_id, state, created_at, arguments'
+        sql += ') VALUES(?, ?, ?, ?, ?)'
         ts = state.created_at.isoformat()
-        values = (run_id, submission_id, state.type_id, ts)
+        arg_values = dict()
+        for key in arguments:
+            arg_values[key] = arguments[key].value
+        arg_serilaization = json.dumps(arg_values, cls=ArgumentEncoder)
+        values = (run_id, submission_id, state.type_id, ts, arg_serilaization)
         self.con.execute(sql, values)
         self.con.commit()
         # Execute the benchmark workflow for the given set of arguments.
@@ -120,7 +193,8 @@ class BenchmarkEngine(object):
             identifier=run_id,
             submission_id=submission_id,
             benchmark_id=template.identifier,
-            state=state
+            state=state,
+            arguments=json.loads(arg_serilaization)
         )
 
     def update_run(self, run_id, state):
@@ -138,21 +212,21 @@ class BenchmarkEngine(object):
 
         Returns
         -------
-        robapi.model.run.RunHandle
+        robapi.model.run.base.RunHandle
 
         Raises
         ------
-        robapi.error.IllegalStateTransitionError
-        robtmpl.error.UnknownRunError
+        robapi.error.InvalidRunStateError
+        robapi.error.UnknownRunError
         """
         # Retrieve the current state information to (a) ensure that the run
         # exists, and (b) validate that the state transition. This will raise
         # an error if the run does not exist.
-        curr_state = self.get_run(run_id)
-        if not curr_state.is_active():
-            raise err.IllegalStateTransitionError(curr_state.state, state)
-        if curr_state.is_running() and state.is_active():
-            raise err.IllegalStateTransitionError(curr_state.state, state)
+        run = self.get_run(run_id)
+        if not run.is_active():
+            raise err.InvalidRunStateError(run.state, state)
+        if run.is_running() and state.is_active():
+            raise err.InvalidRunStateError(run.state, state)
         # Query template to update the state.
         sqltmpl = 'UPDATE benchmark_run SET state=\'' + state.type_id + '\''
         sqltmpl = sqltmpl + ', {} WHERE run_id = \'' + run_id + '\''
@@ -164,6 +238,17 @@ class BenchmarkEngine(object):
                 (sqltmpl.format('started_at=?'),
                 (state.started_at.isoformat(),))
             )
+        elif state.is_canceled():
+            stmts.append(
+                (sqltmpl.format('started_at=?, ended_at=?'),
+                (state.started_at.isoformat(), state.stopped_at.isoformat()))
+            )
+            # Insert statements for error messages
+            instmpl = 'INSERT INTO run_error_log(run_id, message, pos) '
+            instmpl += 'VALUES(?, ?, ?)'
+            messages = state.messages
+            for i in range(len(messages)):
+                stmts.append((instmpl, (run_id, messages[i], i)))
         elif state.is_error():
             stmts.append(
                 (sqltmpl.format('started_at=?, ended_at=?'),
@@ -207,7 +292,7 @@ class BenchmarkEngine(object):
                         values.append(None)
                     columns.append(col.identifier)
                 inssql = 'INSERT INTO {}({}) VALUES({})'.format(
-                     curr_state.result_table(),
+                     run.result_table(),
                     ','.join(columns),
                     ','.join(['?'] * len(columns))
                 )
@@ -219,7 +304,29 @@ class BenchmarkEngine(object):
         # Return run handle with the updated state
         return RunHandle(
             identifier=run_id,
-            submission_id=curr_state.submission_id,
-            benchmark_id=curr_state.benchmark_id,
-            state=curr_state.state
+            submission_id=run.submission_id,
+            benchmark_id=run.benchmark_id,
+            state=state,
+            arguments=run.arguments
         )
+
+
+# -- Helper classes ------------------------------------------------------------
+
+class ArgumentEncoder(json.JSONEncoder):
+    """JSON encoder for run argument values. The encoder is required to handle
+    argument values that are input file objects.
+    """
+    def default(self, obj):
+        if isinstance(obj, InputFile):
+            fh = obj.f_handle
+            return {
+                'fileHandle': {
+                    'filepath': fh.filepath,
+                    'identifier': fh.identifier,
+                    'filename': fh.file_name,
+                },
+                'targetPath': obj.target_path
+            }
+        # Let the base class default method raise the TypeError
+            return json.JSONEncoder.default(self, obj)

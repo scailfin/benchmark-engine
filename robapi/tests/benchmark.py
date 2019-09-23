@@ -34,6 +34,16 @@ class StateEngine(WorkflowEngine):
         """
         self.state = state if not state is None else StatePending()
 
+    def cancel_run(self, run_id):
+        """Request to cancel execution of the given run.
+
+        Parameters
+        ----------
+        run_id: string
+            Unique run identifier
+        """
+        pass
+
     def execute(self, run_id, template, source_dir, arguments):
         """Fake execute method that returns the workflow state that the was
         provided when the object was instantiated. Ignores all given arguments.
@@ -42,7 +52,7 @@ class StateEngine(WorkflowEngine):
         ----------
         run_id: string
             Unique identifier for the workflow run.
-        template: robtmpl.template.base.WorkflowTemplate
+        template: robtmpl.template.base.repo.TemplateHandle
             Workflow template containing the parameterized specification and the
             parameter declarations
         source_dir: string
@@ -64,9 +74,9 @@ def run_workflow(engine, template, submission_id, base_dir, values=None):
 
     Parameters
     ----------
-    engine: robapi.model.engine.BenchmarkEngine
+    engine: robapi.model.benchmark.engine.BenchmarkEngine
         Benchmark executionengine
-    template: robtmpl.template.base.WorkflowTemplate
+    template: robtmpl.template.base.repo.TemplateHandle
         Benchmark workflow template
     submission_id: string
         Unique submission idenifier
@@ -78,7 +88,7 @@ def run_workflow(engine, template, submission_id, base_dir, values=None):
     run = engine.start_run(
         submission_id=submission_id,
         template=template,
-        source_dir='/dev/null',
+        source_dir=template.source_dir,
         arguments=dict()
     )
     run_id = run.identifier

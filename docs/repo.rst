@@ -62,12 +62,13 @@ The **Template Repository** maintains additional information about templates and
     -- for different stages of the executed workflow.
     --
     CREATE TABLE benchmark_run(
-        id CHAR(32) NOT NULL,
-        template CHAR(32) NOT NULL REFERENCES benchmark(id),
+        run_id CHAR(32) NOT NULL,
+        submission_id CHAR(32) NOT NULL REFERENCES benchmark_submission (submission_id),
         state VARCHAR(8) NOT NULL,
         created_at CHAR(26) NOT NULL,
         started_at CHAR(26),
         ended_at CHAR(26),
+        arguments TEXT NOT NULL,
         PRIMARY KEY(run_id)
     );
 
