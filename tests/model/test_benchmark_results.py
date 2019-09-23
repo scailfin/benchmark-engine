@@ -16,6 +16,7 @@ from passlib.hash import pbkdf2_sha256
 from robapi.model.engine import BenchmarkEngine
 from robapi.model.repo import BenchmarkRepository
 from robapi.model.submission import SubmissionManager
+from robapi.tests.benchmark import StateEngine
 from robtmpl.template.schema import SortColumn
 from robtmpl.template.repo.fs import TemplateFSRepository
 
@@ -50,7 +51,7 @@ class TestBenchmarkResultRanking(object):
             con=con,
             template_repo=TemplateFSRepository(base_dir=base_dir)
         )
-        engine = BenchmarkEngine(con=con)
+        engine = BenchmarkEngine(con=con, backend=StateEngine())
         submissions = SubmissionManager(con=con, directory=base_dir)
         return repo, engine, submissions
 

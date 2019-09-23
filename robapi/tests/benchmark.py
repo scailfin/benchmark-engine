@@ -79,8 +79,7 @@ def run_workflow(engine, template, submission_id, base_dir, values=None):
         submission_id=submission_id,
         template=template,
         source_dir='/dev/null',
-        arguments=dict(),
-        backend=StateEngine()
+        arguments=dict()
     )
     run_id = run.identifier
     state = run.state.start()

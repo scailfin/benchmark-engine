@@ -58,7 +58,7 @@ class TestSubmissionManager(object):
             template_repo=TemplateFSRepository(base_dir=str(base_dir))
         ).add_benchmark(name='A', src_dir=TEMPLATE_DIR)
         submissions = SubmissionManager(con=con, directory=base_dir)
-        return submissions, bm, BenchmarkEngine(con=con)
+        return submissions, bm, BenchmarkEngine(con=con, backend=StateEngine())
 
     def test_create_submission(self, tmpdir):
         """Test creating a submission."""
@@ -163,27 +163,26 @@ class TestSubmissionManager(object):
             user_id=USER_1
         )
         # Add two runs to submission 1 and set them into running state
+        engine.backend.state = StatePending().start()
         engine.start_run(
             submission_id=s1.identifier,
             template=bm.get_template(),
             source_dir='/dev/null',
-            arguments=dict(),
-            backend=StateEngine(StatePending().start())
+            arguments=dict()
         )
         engine.start_run(
             submission_id=s1.identifier,
             template=bm.get_template(),
             source_dir='/dev/null',
-            arguments=dict(),
-            backend=StateEngine(StatePending().start())
+            arguments=dict()
         )
         # Add one run to submission 2 that is in pending state
+        engine.backend.state = StatePending()
         engine.start_run(
             submission_id=s2.identifier,
             template=bm.get_template(),
             source_dir='/dev/null',
-            arguments=dict(),
-            backend=StateEngine()
+            arguments=dict()
         )
         # Ensure that submission 1 has two runs in running state
         submission = manager.get_submission(s1.identifier)

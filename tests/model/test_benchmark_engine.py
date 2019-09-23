@@ -55,7 +55,7 @@ class TestBenchmarkEngine(object):
             con=con,
             template_repo=TemplateFSRepository(base_dir=base_dir)
         )
-        engine = BenchmarkEngine(con=con)
+        engine = BenchmarkEngine(con=con, backend=StateEngine())
         submissions = SubmissionManager(con=con, directory=base_dir)
         return repo, engine, submissions
 
@@ -78,8 +78,7 @@ class TestBenchmarkEngine(object):
             submission_id=submission.identifier,
             template=bm_1.get_template(),
             source_dir='/dev/null',
-            arguments=dict(),
-            backend=StateEngine()
+            arguments=dict()
         )
         run_id = run.identifier
         # Start the run
@@ -166,8 +165,7 @@ class TestBenchmarkEngine(object):
             submission_id=submission.identifier,
             template=bm_1.get_template(),
             source_dir='/dev/null',
-            arguments=dict(),
-            backend=StateEngine()
+            arguments=dict()
         )
         run_id = run.identifier
         assert run.state.is_pending()
