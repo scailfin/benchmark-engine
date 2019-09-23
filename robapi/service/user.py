@@ -145,9 +145,55 @@ class UserService(object):
             verify=verify
         )
         if verify:
-            return self.serialize.registered(user)
+            return self.serialize.registered_user(user)
         else:
             return self.serialize.user(user)
+
+    def request_password_reset(self, username):
+        """Request to reset the password for the user with the given name. The
+        result contains a unique request identifier for the user to send along
+        with their new password.
+
+        Parameters
+        ----------
+        username: string
+            Unique user login name
+
+        Returns
+        -------
+        dict
+        """
+        request_id = self.manager.request_password_reset(username)
+        return self.serialize.reset_request(request_id)
+
+    def reset_password(self, request_id, password):
+        """Reset the password for the user that made the given password reset
+        request. Raises an error if no such request exists or if the request
+        has timed out.
+
+        Returns the serialization of the user handle.
+
+        Parameters
+        ----------
+        request_id: string
+            Unique password reset request identifier
+        password: string
+            New user password
+
+        Returns
+        -------
+        dict
+
+        Raises
+        ------
+        robapi.error.ConstraintViolationError
+        robapi.error.UnknownRequestError
+        """
+        user = self.manager.reset_password(
+            request_id=request_id,
+            password=password
+        )
+        return self.serialize.user(user)
 
     def whoami_user(self, access_token):
         """Get serialization of the user that is associated with the given

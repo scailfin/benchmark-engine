@@ -312,6 +312,10 @@ class UserManager(object):
         password: string
             New user password
 
+        Returns
+        -------
+        robapi.model.user.UserHandle
+
         Raises
         ------
         robapi.error.ConstraintViolationError
@@ -321,7 +325,9 @@ class UserManager(object):
         validate_password(password)
         # Get the user and expiry date for the request. Raise error if the
         # request is unknown or has expired.
-        sql = 'SELECT user_id, expires FROM password_request WHERE request_id = ?'
+        sql = 'SELECT u.user_id, u.name, r.expires '
+        sql += 'FROM api_user u, password_request r '
+        sql += 'WHERE u.user_id = r.user_id AND r.request_id = ?'
         req = self.con.execute(sql, (request_id,)).fetchone()
         if req is None:
             raise err.UnknownRequestError(request_id)
@@ -330,6 +336,7 @@ class UserManager(object):
             raise err.UnknownRequestError(request_id)
         # Update password hash for the identifier user
         user_id = req['user_id']
+        username = req['name']
         pwd_hash = pbkdf2_sha256.hash(password.strip())
         sql = 'UPDATE api_user SET secret = ? WHERE user_id = ?'
         self.con.execute(sql, (pwd_hash, user_id))
@@ -340,6 +347,8 @@ class UserManager(object):
         sql = 'DELETE FROM password_request WHERE request_id = ?'
         self.con.execute(sql, (request_id,))
         self.con.commit()
+        # Return handle for user
+        return UserHandle(identifier=user_id, name=username)
 
 
 # -- Helper Methods ------------------------------------------------------------

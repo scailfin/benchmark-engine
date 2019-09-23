@@ -24,7 +24,7 @@ class UserSerializer(object):
         """
         self.urls = urls
 
-    def registered(self, user):
+    def registered_user(self, user):
         """Serialization for user handle of a newly registered user. The list of
         HATEOAS references will contain a link to activate the user.
 
@@ -41,6 +41,20 @@ class UserSerializer(object):
         link = {hateoas.user(hateoas.ACTIVATE): self.urls.activate_user()}
         doc[labels.LINKS].append(hateoas.serialize(link)[0])
         return doc
+
+    def reset_request(self, request_id):
+        """Serialization for requested identifier to rest a user password.
+
+        Parameters
+        ----------
+        request_id: string
+            Unique request identifier
+
+        Returns
+        -------
+        dict
+        """
+        return {labels.REQUEST_ID: request_id}
 
     def user(self, user):
         """Serialization for user handle. Contains the user name and the access

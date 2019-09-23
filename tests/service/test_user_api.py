@@ -14,6 +14,7 @@ from robapi.model.auth import OpenAccessAuth
 from robapi.model.user import UserManager
 from robapi.service.user import UserService
 
+import robapi.error as err
 import robapi.serialize.hateoas as hateoas
 import robapi.serialize.labels as labels
 import robapi.tests.db as db
@@ -136,3 +137,19 @@ class TestUserApi(object):
                 hateoas.user(hateoas.LOGIN)
             ]
         )
+
+    def test_reset_password(self, tmpdir):
+        """Test requesting a reset and resetting the password for a user."""
+        users = self.init(str(tmpdir))
+        # Register a new user
+        users.register_user(username='myuser', password='mypwd', verify=False)
+        # Request password reset
+        r = users.request_password_reset('myuser')
+        util.validate_doc(r, mandatory_labels=[labels.REQUEST_ID])
+        # Update the user password
+        request_id = r[labels.REQUEST_ID]
+        r = users.reset_password(request_id=request_id, password='abcde')
+        util.validate_doc(doc=r, mandatory_labels=USER_LOGOUT)
+        # Error when using invalid request identifier
+        with pytest.raises(err.UnknownRequestError):
+            users.reset_password(request_id=request_id, password='abcde')

@@ -114,7 +114,8 @@ class TestUserManager(object):
         assert not request_id_2 is None
         assert request_id_1 != request_id_2
         # Reset password for existing user
-        users.reset_password(request_id=request_id_1, password='mypwd')
+        user = users.reset_password(request_id=request_id_1, password='mypwd')
+        assert user.identifier == user_id
         # After resetting the password the previous API key for the user is
         # invalid
         with pytest.raises(err.UnauthenticatedAccessError):
