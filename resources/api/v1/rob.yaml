@@ -286,7 +286,7 @@ paths:
     get:
       tags:
       - "run"
-      summary: "Get submission runs"
+      summary: "List submission runs"
       description: "Get listing of all runs for the given submission"
       operationId: "getSubmissionRuns"
       produces:
