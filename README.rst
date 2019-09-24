@@ -1,6 +1,6 @@
-==============================
-Reproducible Benchmarks Engine
-==============================
+=========================================
+Reproducible Data Analysis Benchmarks API
+=========================================
 
 .. image:: https://img.shields.io/badge/License-MIT-yellow.svg
    :target: https://github.com/scailfin/benchmark-engine/blob/master/LICENSE
@@ -9,7 +9,7 @@ Reproducible Benchmarks Engine
 About
 =====
 
-The **Reproducible Benchmarks Engine** is a component of the *Reproducible Open Benchmarks for Data Analysis Platform (ROB)*. The benchmark engine is responsible for maintaining benchmark templates and benchmark runs. The results for all benchmark runs are integrated by the engine to compile a leaderboard for each benchmark.
+The **Reproducible Benchmarks API** is a component of the *Reproducible Open Benchmarks for Data Analysis Platform (ROB)*. The benchmark API is responsible for maintaining benchmark templates and benchmark runs. The results for all benchmark runs are integrated by the API to compile a leaderboard for each benchmark.
 
 
 More Information
