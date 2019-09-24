@@ -75,7 +75,7 @@ class RunService(object):
         robapi.error.InvalidRunStateError
         """
         # Ensure that the user has sufficient access rights to cancel the run
-        if not self.auth.can_modify(res.RUN, run_id, user):
+        if not self.auth.is_submission_member(run_id=run_id, user=user):
             raise err.UnauthorizedAccessError()
         self.engine.cancel_run(run_id)
         return self.get_run(run_id=run_id, user=user)
@@ -105,9 +105,9 @@ class RunService(object):
         robapi.error.InvalidRunStateError
         """
         # Ensure that the user has sufficient access rights to delete the run
-        if not self.auth.can_delete(res.RUN, run_id, user):
+        if not self.auth.is_submission_member(run_id=run_id, user=user):
             raise err.UnauthorizedAccessError()
-        self.engine.delete_run(run_id)
+        run = self.engine.delete_run(run_id)
         return self.list_runs(submission_id=run.submission_id, user=user)
 
     def get_run(self, run_id, user):
@@ -133,7 +133,7 @@ class RunService(object):
         robapi.error.UnknownRunError
         """
         # Ensure that the user has read access for the run
-        if not self.auth.has_access(res.RUN, run_id, user):
+        if not self.auth.is_submission_member(run_id=run_id, user=user):
             raise err.UnauthorizedAccessError()
         run = self.engine.get_run(run_id)
         return self.serialize.run_handle(run)
@@ -160,8 +160,8 @@ class RunService(object):
         robapi.error.UnauthorizedAccessError
         robapi.error.UnknownSubmissionError
         """
-        # Ensure that the user has read access for the submission
-        if not self.auth.has_access(res.SUBMISSION, submission_id, user):
+        # Ensure that the user has read access for submission runs
+        if not self.auth.is_submission_member(submission_id=submission_id, user=user):
             raise err.UnauthorizedAccessError()
         return self.serialize.run_listing(
             runs=self.submissions.get_runs(submission_id),
@@ -198,7 +198,7 @@ class RunService(object):
         robapi.error.UnknownSubmissionError
         """
         # Ensure that the user has sufficient access rights to create a new run
-        if not self.auth.can_modify(res.SUBMISSION, submission_id, user):
+        if not self.auth.is_submission_member(submission_id=submission_id, user=user):
             raise err.UnauthorizedAccessError()
         # Get the submission handle. This will raise an error if the submission
         # is unknown.

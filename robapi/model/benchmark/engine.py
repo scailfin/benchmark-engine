@@ -80,6 +80,10 @@ class BenchmarkEngine(object):
         run_id: string
             Unique submission identifier
 
+        Returns
+        -------
+        robapi.model.run.base.RunHandle
+
         Raises
         ------
         robapi.error.UnknownRunError
@@ -112,6 +116,7 @@ class BenchmarkEngine(object):
                     os.remove(fh.filename)
                 except OSError:
                     pass
+        return run
 
     def get_run(self, run_id):
         """Get handle for the given run. The run state and associated submission

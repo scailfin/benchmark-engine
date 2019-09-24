@@ -14,7 +14,7 @@ import time
 
 from passlib.hash import pbkdf2_sha256
 
-from robapi.model.auth import OpenAccessAuth
+from robapi.model.auth import Auth, OpenAccessAuth
 from robapi.model.user import UserManager
 
 import robapi.error as err
@@ -42,6 +42,11 @@ class TestUserAuthentication(object):
         con.execute(sql, (USER_3, USER_3, pbkdf2_sha256.hash(USER_3), 0))
         con.commit()
         return UserManager(con), OpenAccessAuth(con)
+
+    def test_abstract_methods(self):
+        """Test abstract methods of base class Auth for completeness."""
+        with pytest.raises(NotImplementedError):
+            Auth(con=None).is_submission_member(user=None)
 
     def test_authenticate_user(self, tmpdir):
         """Test user login and logout."""

@@ -17,26 +17,91 @@ import robapi.config.base as config
 """Names of environment variables that are used to configure the authentication
 module.
 """
-# Timeperiod for which an API key is valid
+# Base URL for all API resources
 ROB_API_URL = 'ROB_APIURL'
 # Base directory to store uploaded files and submission results
-ENV_BASEDIR = 'BENCHENGINE_BASEDIR'
-# Connect string for the underlying database
-ENV_DATABASE = 'BENCHENGINE_DATABASE'
-# Timeperiod for which an API key is valid
-ENV_LOGIN_TIMEOUT = 'BENCHENGINE_LOGIN_TIMEOUT'
-# Path to file containing the database schema (for db_init)
-ENV_SCHEMA_FILE = 'BENCHENGINE_SCHEMA_FILE'
+ROB_API_BASEDIR = 'ROB_APIDIR'
 # Name of the API instance
-ENV_SERVICE_NAME = 'BENCHENGINE_SERVICE_NAME'
+ROB_API_NAME = 'ROB_APINAME'
 
 
 """Default values for environment variables."""
+DEFAULT_DIR = '.rob'
+DEFAULT_NAME = 'Reproducible Open Benchmarks for Data Analysis (API)'
 DEFAULT_URL = 'http://localhost:5000/rob/api/v1'
-DEFAULT_SERVICE_NAME = 'Reproducible Benchmarks for Data Analysis (Development API)'
-
 
 # -- Public helper methods to access configuration values ----------------------
+
+def API_BASEDIR(default_value=None, raise_error=False):
+    """Get the base directory that is used by the API to store benchmark
+    templates and benchmark runs from the respective environment variable
+    'ROB_APIDIR'. Raises a MissingConfigurationError if thr raise_error flag
+    is True and 'ROB_APIDIR' is not set. If the raise_error flag is False and
+    'ROB_APIDIR' is not set the default name is returned.
+
+    Parameters
+    ----------
+    default_value: string, optional
+        Default value if 'ROB_APIDIR' is not set and raise_error flag is
+        False
+    raise_error: bool, optional
+        Flag indicating whether an error is raised if the environment variable
+        is not set (i.e., None or and empty string '')
+
+    Returns
+    -------
+    string
+
+    Raises
+    ------
+    robapi.error.MissingConfigurationError
+    """
+    val = config.get_variable(
+        name=ROB_API_BASEDIR,
+        default_value=default_value,
+        raise_error=raise_error
+    )
+    # If the environment variable is not set and no default value was given
+    # return the defined default value
+    if val is None:
+        val = DEFAULT_DIR
+    return val
+
+
+def API_NAME(default_value=None, raise_error=False):
+    """Get the service name for the API from the respective environment variable
+    'ROB_APINAME'. Raises a MissingConfigurationError if thr raise_error flag
+    is True and 'ROB_APINAME' is not set. If the raise_error flag is False and
+    'ROB_APINAME' is not set the default name is returned.
+
+    Parameters
+    ----------
+    default_value: string, optional
+        Default value if 'ROB_APINAME' is not set and raise_error flag is
+        False
+    raise_error: bool, optional
+        Flag indicating whether an error is raised if the environment variable
+        is not set (i.e., None or and empty string '')
+
+    Returns
+    -------
+    string
+
+    Raises
+    ------
+    robapi.error.MissingConfigurationError
+    """
+    val = config.get_variable(
+        name=ROB_API_NAME,
+        default_value=default_value,
+        raise_error=raise_error
+    )
+    # If the environment variable is not set and no default value was given
+    # return the defined default value
+    if val is None:
+        val = DEFAULT_NAME
+    return val
+
 
 def API_URL(default_value=None, raise_error=False):
     """Get the base URL for the API from the respective environment variable

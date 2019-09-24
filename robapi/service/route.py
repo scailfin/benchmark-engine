@@ -49,20 +49,6 @@ class UrlFactory(object):
         """
         return self.user_base_url + '/activate'
 
-    def add_team_members(self, team_id):
-        """Url to POST list of new team members.
-
-        Parameters
-        ----------
-        team_id: string
-            Unique team identifier
-
-        Returns
-        -------
-        string
-        """
-        return self.get_team(team_id) + '/members'
-
     def cancel_run(self, run_id):
         """Url to POST cancel request for benchmark run.
 
@@ -261,22 +247,6 @@ class UrlFactory(object):
         """
         return self.user_base_url + '/register'
 
-    def remove_team_member(self, team_id, user_id):
-        """Url to DELETE a member for a team.
-
-        Parameters
-        ----------
-        team_id: string
-            Unique team identifier
-        user_id: string
-            Unique user identifier
-
-        Returns
-        -------
-        string
-        """
-        return self.add_team_members(team_id) + '/' + user_id
-
     def service_descriptor(self):
         """Url to GET the service descriptor.
 
@@ -286,37 +256,35 @@ class UrlFactory(object):
         """
         return self.base_url
 
-    def team_files(self, team_id):
-        """Base Url to access uploaded files for a given team.
+    def submit_run(self, submission_id):
+        """Url to POST arguments to start a new run for a given submission.
 
         Parameters
         ----------
-        team_id: string
-            Unique team identifier
+        submission_id: string
+            Unique submission identifier
 
         Returns
         -------
         string
         """
-        return self.get_team(team_id) + '/files'
+        return self.get_submission(submission_id) + '/runs'
 
-    def upload_file(self, team_id):
+    def upload_file(self, submission_id):
         """Url to POST a new file to upload. The uploaded file is associated
-        with the given team.
+        with the given submission.
 
 
         Parameters
         ----------
-        team_id: string
-            Unique team identifier
-        file_id: string
-            Unique file identifier
+        submission_id: string
+            Unique submission identifier
 
         Returns
         -------
         string
         """
-        return self.team_files(team_id) + '/upload'
+        return self.list_files(submission_id)
 
     def whoami(self):
         """Url to GET information about a user that is logged in.

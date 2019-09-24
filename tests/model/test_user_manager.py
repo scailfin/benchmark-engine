@@ -145,7 +145,7 @@ class TestUserManager(object):
         user_id = auth.authenticate(user.api_key).identifier
         assert user.identifier == user_id
         # Hack: Manipulate the login_timeout value to similate timeout
-        users.login_timeout = 1
+        users = UserManager(con=users.con, login_timeout=1)
         # Request reset and sleep for two seconds. This should allow the request
         # to timeout
         request_id = users.request_password_reset('first.user@me.com')

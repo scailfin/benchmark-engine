@@ -9,7 +9,7 @@ Reproducible Data Analysis Benchmarks API
 About
 =====
 
-The **Reproducible Benchmarks API** is a component of the *Reproducible Open Benchmarks for Data Analysis Platform (ROB)*. The benchmark API is responsible for maintaining benchmark templates and benchmark runs. The results for all benchmark runs are integrated by the API to compile a leaderboard for each benchmark.
+The **Reproducible Benchmarks API** is a component of the *Reproducible Open Benchmarks for Data Analysis Platform (ROB)*. The benchmark API is responsible for maintaining benchmark templates and benchmark runs. The results for all benchmark runs are integrated by the API to compile a leader board for each benchmark.
 
 
 More Information

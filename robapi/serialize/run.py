@@ -102,6 +102,7 @@ class RunSerializer(object):
                 self.run_descriptor(r) for r in runs
             ],
             labels.LINKS: hateoas.serialize({
-                hateoas.SELF: self.urls.list_runs(submission_id)
+                hateoas.SELF: self.urls.list_runs(submission_id),
+                hateoas.SUBMIT: self.urls.submit_run(submission_id)
             })
         }

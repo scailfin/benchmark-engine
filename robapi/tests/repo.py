@@ -23,8 +23,7 @@ class DictRepo(object):
         self.templates = templates if not templates is None else dict()
 
     def get_template(self, identifier):
-        """Load template with the given identifier. Raises error if no entry
-        with the given identifier exists in the template dictionary.
+        """Load template with the given identifier.
 
         Parameters
         ----------
@@ -34,15 +33,8 @@ class DictRepo(object):
         Returns
         -------
         any
-
-        Raises
-        ------
-        ValueError
         """
-        if identifier in self.templates:
-            return self.templates[identifier]
-        else:
-            raise ValueError('unknown template \'{}\''.format(identifier))
+        return self.templates[identifier]
 
     @property
     def template_repo(self):

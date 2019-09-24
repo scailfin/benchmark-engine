@@ -102,7 +102,7 @@ class SubmissionService(object):
         """
         # Raise an error if the user does not have delete rights for the
         # submission
-        if not self.auth.can_delete(res.FILE, submission_id, user):
+        if not self.auth.is_submission_member(submission_id=submission_id, user=user):
             raise err.UnauthorizedAccessError()
         self.manager.delete_file(submission_id=submission_id, file_id=file_id)
         return self.list_files(submission_id=submission_id, user=user)
@@ -132,7 +132,7 @@ class SubmissionService(object):
         robapi.error.UnknownSubmissionError
         """
         # Raise an error if the user is not authorized to delete the submission
-        if not self.auth.can_delete(res.SUBMISSION, submission_id, user):
+        if not self.auth.is_submission_member(submission_id=submission_id, user=user):
             raise err.UnauthorizedAccessError()
         self.manager.delete_submission(submission_id)
         return self.list_submissions(user)
@@ -161,7 +161,7 @@ class SubmissionService(object):
         """
         # Raise an error if the user does not have access rights for the
         # submission files
-        if not self.auth.has_access(res.FILE, submission_id, user):
+        if not self.auth.is_submission_member(submission_id=submission_id, user=user):
             raise err.UnauthorizedAccessError()
         # Return the file handle and of a serialization
         fh = self.manager.get_file(submission_id=submission_id, file_id=file_id)
@@ -213,7 +213,7 @@ class SubmissionService(object):
         """
         # Ensure that the user is authorized to retrieve the file listing for
         # the given submission
-        if not self.auth.has_access(res.FILE, submission_id, user):
+        if not self.auth.is_submission_member(submission_id=submission_id, user=user):
             raise err.UnauthorizedAccessError()
         files = self.manager.list_files(submission_id)
         return self.serialize.file_listing(
@@ -265,7 +265,7 @@ class SubmissionService(object):
         robapi.error.UnknownSubmissionError
         """
         # Raise an error if the user is not authorized to modify the submission
-        if not self.auth.can_modify(res.SUBMISSION, submission_id, user):
+        if not self.auth.is_submission_member(submission_id=submission_id, user=user):
             raise err.UnauthorizedAccessError()
         submission = self.manager.update_submission(
             submission_id,
@@ -300,7 +300,7 @@ class SubmissionService(object):
         """
         # Ensure that the user is authorized to modify files for the given
         # submission
-        if not self.auth.can_modify(res.FILE, submission_id, user):
+        if not self.auth.is_submission_member(submission_id=submission_id, user=user):
             raise err.UnauthorizedAccessError()
         # Return serialization of the uploaded file
         fh = self.manager.upload_file(

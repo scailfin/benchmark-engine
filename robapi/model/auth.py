@@ -21,14 +21,6 @@ from robapi.model.user import UserHandle
 import robapi.error as err
 
 
-"""Unique identifier for API resources that are controlled by the authorization
-module.
-"""
-FILE = 'file'
-RUN = 'run'
-SUBMISSION = 'submission'
-
-
 class Auth(object):
     """Base class for authentication and authorization methods. Different
     authorization policies can implement different version of this class.
@@ -80,59 +72,30 @@ class Auth(object):
         )
 
     @abstractmethod
-    def can_delete(self, resource_type, resource_id, user):
-        """Verify that the user can delete the given resource.
+    def is_submission_member(self, user, submission_id=None, run_id=None):
+        """Verify that the given user is member of a benchmark submission. The
+        submission is is identified either by the givven submission identifier
+        or the identifier of a run that is associated with the submission.
+
+        Expects that exactly one of the two optional identifier is given.
+        Raises a ValueError if both identifier are None or not None.
 
         Parameters
         ----------
-        resource_type: string
-            Unique resource type identifier
-        resource_id: string
-            Unique resource identifier
         user: robapi.model.user.UserHandle
             Handle for user that is accessing the resource
+        submission_id: string, optional
+            Unique submission identifier
+        run_id: string, optional
+            Unique run identifier
 
         Returns
         -------
         bool
-        """
-        raise NotImplementedError()
 
-    @abstractmethod
-    def can_modify(self, resource_type, resource_id, user):
-        """Verify that the user can modify the given resource.
-
-        Parameters
-        ----------
-        resource_type: string
-            Unique resource type identifier
-        resource_id: string
-            Unique resource identifier
-        user: robapi.model.user.UserHandle
-            Handle for user that is accessing the resource
-
-        Returns
-        -------
-        bool
-        """
-        raise NotImplementedError()
-
-    @abstractmethod
-    def has_access(self, resource_type, resource_id, user):
-        """Verify that the user can access the given resource.
-
-        Parameters
-        ----------
-        resource_type: string
-            Unique resource type identifier
-        resource_id: string
-            Unique resource identifier
-        user: robapi.model.user.UserHandle
-            Handle for user that is accessing the resource
-
-        Returns
-        -------
-        bool
+        Raises
+        ------
+        ValueError
         """
         raise NotImplementedError()
 
@@ -149,127 +112,45 @@ class DefaultAuthPolicy(Auth):
         """
         super(DefaultAuthPolicy, self).__init__(con)
 
-    def can_delete(self, resource_type, resource_id, user):
-        """Verify that the user can delete the given resource. The default
-        authorization policy does not distinguish between delete and modify
-        operations.
+    def is_submission_member(self, user, submission_id=None, run_id=None):
+        """Verify that the given user is member of a benchmark submission. The
+        submission is is identified either by the givven submission identifier
+        or the identifier of a run that is associated with the submission.
+
+        Expects that exactly one of the two optional identifier is given.
+        Raises a ValueError if both identifier are None or not None.
 
         Parameters
         ----------
-        resource_type: string
-            Unique resource type identifier
-        resource_id: string
-            Unique resource identifier
         user: robapi.model.user.UserHandle
             Handle for user that is accessing the resource
-
-        Returns
-        -------
-        bool
-        """
-        return self.can_modify(resource_type, resource_id, user)
-
-    def can_modify(self, resource_type, resource_id, user):
-        """Verify that the user can modify the given resource.
-
-        Parameters
-        ----------
-        resource_type: string
-            Unique resource type identifier
-        resource_id: string
-            Unique resource identifier
-        user: robapi.model.user.UserHandle
-            Handle for user that is accessing the resource
-
-        Returns
-        -------
-        bool
-        """
-        if resource_type in [SUBMISSION, FILE]:
-            return self.is_submission_member(
-                submission_id=resource_id,
-                user_id=user.identifier
-            )
-        elif resource_type == RUN:
-            return self.is_run_member(
-                run_id=resource_id,
-                user_id=user.identifier
-            )
-        # By default a user has access to all resources that are not controlled
-        # by the policy
-        return True
-
-    def has_access(self, resource_type, resource_id, user):
-        """Verify that the user can access the given resource.
-
-        Parameters
-        ----------
-        resource_type: string
-            Unique resource type identifier
-        resource_id: string
-            Unique resource identifier
-        user: robapi.model.user.UserHandle
-            Handle for user that is accessing the resource
-
-        Returns
-        -------
-        bool
-        """
-        if resource_type == FILE:
-            # The user has to be a member of the submission in order to access
-            # or manipulate uploaded files
-            return self.is_submission_member(
-                submission_id=resource_id,
-                user_id=user.identifier
-            )
-        elif resource_type == RUN:
-            return self.is_run_member(
-                run_id=resource_id,
-                user_id=user.identifier
-            )
-        # By default a user has access to all resources that are not controlled
-        # by the policy
-        return True
-
-    def is_run_member(self, run_id, user_id):
-        """Test if the user is member of the submission that the given run
-        belongs to.
-
-        Parameters
-        ----------
-        run_id: string
-            Unique run identifier
-        user_id: string
-            Unique user identifier
-
-        Returns
-        -------
-        bool
-        """
-        sql = 'SELECT r.submission_id '
-        sql += 'FROM submission_run r, submission_member s '
-        sql += 'WHERE r.submission_id = s.submission_id AND '
-        sql += 'r.run_id = ? AND user_id = ?'
-        params = (run_id, user_id)
-        return not self.con.execute(sql, params).fetchone() is None
-
-    def is_submission_member(self, submission_id, user_id):
-        """Test if the user is member of the given submission.
-
-        Parameters
-        ----------
-        submission_id: string
+        submission_id: string, optional
             Unique submission identifier
-        user_id: string
-            Unique user identifier
+        run_id: string, optional
+            Unique run identifier
 
         Returns
         -------
         bool
+
+        Raises
+        ------
+        ValueError
         """
-        sql = 'SELECT submission_id FROM submission_member '
-        sql += 'WHERE submission_id = ? AND user_id = ?'
-        params = (submission_id, user_id)
+        if submission_id is None and run_id is None:
+            raise ValueError('no identifier given')
+        elif not submission_id is None and not run_id is None:
+            raise ValueError('two identifier given')
+        elif not submission_id is None:
+            sql = 'SELECT submission_id FROM submission_member '
+            sql += 'WHERE submission_id = ? AND user_id = ?'
+            params = (submission_id, user.identifier)
+        else:
+            sql = 'SELECT r.submission_id '
+            sql += 'FROM benchmark_run r, submission_member s '
+            sql += 'WHERE r.submission_id = s.submission_id AND '
+            sql += 'r.run_id = ? AND user_id = ?'
+            params = (run_id, user.identifier)
         return not self.con.execute(sql, params).fetchone() is None
 
 
@@ -287,56 +168,30 @@ class OpenAccessAuth(Auth):
         """
         super(OpenAccessAuth, self).__init__(con)
 
-    def can_delete(self, resource_type, resource_id, user):
-        """Everyone can delete any resource.
+    def is_submission_member(self, user, submission_id=None, run_id=None):
+        """Anyone has access to a submission. This method still ensures that
+        exactly one of the two optional identifier is given. Raises a
+        ValueError if both identifier are None or not None.
 
         Parameters
         ----------
-        resource_type: string
-            Unique resource type identifier
-        resource_id: string
-            Unique resource identifier
         user: robapi.model.user.UserHandle
             Handle for user that is accessing the resource
+        submission_id: string, optional
+            Unique submission identifier
+        run_id: string, optional
+            Unique run identifier
 
         Returns
         -------
         bool
+
+        Raises
+        ------
+        ValueError
         """
-        return True
-
-    def can_modify(self, resource_type, resource_id, user):
-        """Everyone can modify any resource.
-
-        Parameters
-        ----------
-        resource_type: string
-            Unique resource type identifier
-        resource_id: string
-            Unique resource identifier
-        user: robapi.model.user.UserHandle
-            Handle for user that is accessing the resource
-
-        Returns
-        -------
-        bool
-        """
-        return True
-
-    def has_access(self, resource_type, resource_id, user):
-        """Everyone can access any resource.
-
-        Parameters
-        ----------
-        resource_type: string
-            Unique resource type identifier
-        resource_id: string
-            Unique resource identifier
-        user: robapi.model.user.UserHandle
-            Handle for user that is accessing the resource
-
-        Returns
-        -------
-        bool
-        """
+        if submission_id is None and run_id is None:
+            raise ValueError('no identifier given')
+        elif not submission_id is None and not run_id is None:
+            raise ValueError('two identifier given')
         return True

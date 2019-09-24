@@ -46,7 +46,7 @@ LLABELS = [labels.SUBMISSIONS, labels.LINKS]
 FILE_HANDLE = [labels.ID, labels.NAME, labels.CREATED_AT, labels.FILESIZE, labels.LINKS]
 
 # Mandatory HATEOAS relationships in submission handles
-RELS = [hateoas.SELF]
+RELS = [hateoas.SELF, hateoas.action(hateoas.UPLOAD)]
 RELSFH = [hateoas.action(hateoas.DOWNLOAD), hateoas.action(hateoas.DELETE)]
 
 

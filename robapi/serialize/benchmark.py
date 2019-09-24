@@ -138,35 +138,3 @@ class BenchmarkSerializer(object):
                 hateoas.SELF: self.urls.list_benchmarks()
             })
         }
-
-    def benchmark_run(self, benchmark_id, run_id, state):
-        """Get dictionary serialization for the current state of a benchmark
-        run.
-
-        Parameters
-        ----------
-        benchmark_id: string
-            Unique benchmark identifier
-        run_id: string
-            Unique run identifier
-        state: benchtmpl.workflow.state.WorkflowState
-            Current run state
-
-        Returns
-        -------
-        dict
-        """
-        obj = {
-            labels.ID: run_id,
-            labels.STATE: state.type_id
-        }
-        # If the workflow is not in pending mode it has a started_at timestamp
-        if not state.is_pending():
-            obj[labels.STARTED_AT] = state.started_at.isoformat()
-        # If the workflow is not active it has a finished_at timestamp
-        if not state.is_active():
-            obj[labels.FINISHED_AT] = state.finished_at.isoformat()
-        # If the workflow is in error state it has a list of error messages
-        if state.is_error():
-            obj[labels.MESSAGES] = state.messages
-        return obj

@@ -87,11 +87,13 @@ class SubmissionSerializer(object):
         -------
         dict
         """
+        s_id = submission.identifier
         return {
-            labels.ID: submission.identifier,
+            labels.ID: s_id,
             labels.NAME: submission.name,
             labels.LINKS: hateoas.serialize({
-                hateoas.SELF: self.urls.get_submission(submission.identifier)
+                hateoas.SELF: self.urls.get_submission(s_id),
+                hateoas.action(hateoas.UPLOAD): self.urls.upload_file(s_id)
             })
         }
 

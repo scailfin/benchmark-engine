@@ -74,6 +74,7 @@ class UserSerializer(object):
         links = {hateoas.WHOAMI: self.urls.whoami()}
         if user.is_logged_in():
             doc[labels.ACCESS_TOKEN] = user.api_key
+            links[hateoas.WHOAMI] = self.urls.whoami()
             links[hateoas.action(hateoas.LOGOUT)] = self.urls.logout()
         else:
             links[hateoas.action(hateoas.LOGIN)] = self.urls.login()

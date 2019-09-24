@@ -33,6 +33,7 @@ import robapi.serialize.labels as labels
 import robapi.tests.db as db
 import robapi.tests.serialize as serialize
 import robtmpl.util as util
+import robtmpl.workflow.state.base as wf
 
 
 DIR = os.path.dirname(os.path.realpath(__file__))
@@ -41,7 +42,6 @@ TEMPLATE_DIR = os.path.join(DIR, '../.files/templates/helloworld')
 # Default benchmark users
 USER_1 = util.get_unique_identifier()
 USER_2 = util.get_unique_identifier()
-USER_3 = util.get_unique_identifier()
 
 # Mandatory labels for run handles
 RUN_LABELS = [labels.ID, labels.STATE, labels.CREATED_AT, labels.LINKS]
@@ -50,10 +50,12 @@ RUN_PENDING = RUN_HANDLE
 RUN_RUNNING = RUN_PENDING + [labels.STARTED_AT]
 RUN_ERROR = RUN_RUNNING + [labels.FINISHED_AT, labels.MESSAGES]
 RUN_SUCCESS = RUN_RUNNING + [labels.FINISHED_AT]
+RUN_LISTING = [labels.RUNS, labels.LINKS]
 
 # Mandatory HATEOAS relationships in run descriptors
 RELS_ACTIVE = [hateoas.SELF, hateoas.action(hateoas.CANCEL)]
 RELS_INACTIVE = [hateoas.SELF, hateoas.action(hateoas.DELETE)]
+RELS_LISTING = [hateoas.SELF, hateoas.SUBMIT]
 
 
 class TestRunApi(object):
@@ -67,7 +69,7 @@ class TestRunApi(object):
         """
         con = db.init_db(base_dir).connect()
         sql = 'INSERT INTO api_user(user_id, name, secret, active) VALUES(?, ?, ?, ?)'
-        for user_id in [USER_1, USER_2, USER_3]:
+        for user_id in [USER_1, USER_2]:
             con.execute(sql, (user_id, user_id, pbkdf2_sha256.hash(user_id), 1))
         repo = BenchmarkRepository(
             con=con,
@@ -87,6 +89,36 @@ class TestRunApi(object):
             UserManager(con=con),
             bm
         )
+
+    def test_cancel_and_delete_runs(self, tmpdir):
+        """Test cancel and delete for submission runs."""
+        runs, submissions, users, benchmark = self.init(str(tmpdir))
+        # Get handle for USER_1
+        user = users.login_user(USER_1, USER_1)
+        # Create new submission with a single member
+        s = submissions.create_submission(
+            benchmark_id=benchmark.identifier,
+            name='A',
+            user=user
+        )
+        submission_id = s[labels.ID]
+        # Start a new run. The resulting run is expected to be in pending state.
+        r = runs.start_run(submission_id, dict(), user)
+        run_id = r[labels.ID]
+        # Cancel the pending run
+        r = runs.cancel_run(run_id=run_id, user=user)
+        util.validate_doc(doc=r, mandatory_labels=RUN_ERROR)
+        serialize.validate_links(r, RELS_INACTIVE)
+        assert r[labels.STATE] == wf.STATE_CANCELED
+        # Error when trying to delete a run without being a submission member
+        user2 = users.login_user(USER_2, USER_2)
+        with pytest.raises(err.UnauthorizedAccessError):
+            runs.delete_run(run_id=run_id, user=user2)
+        # Delete the run
+        r = runs.delete_run(run_id=run_id, user=user)
+        util.validate_doc(doc=r, mandatory_labels=RUN_LISTING)
+        serialize.validate_links(r, RELS_LISTING)
+        assert len(r[labels.RUNS]) == 0
 
     def test_execute_run(self, tmpdir):
         """Test starting new runs for a submission."""
@@ -124,3 +156,67 @@ class TestRunApi(object):
         r = runs.start_run(submission_id, dict(), user)
         util.validate_doc(doc=r, mandatory_labels=RUN_SUCCESS)
         serialize.validate_links(r, RELS_INACTIVE)
+        # Error when trying to start a run without being a submission member
+        user2 = users.login_user(USER_2, USER_2)
+        with pytest.raises(err.UnauthorizedAccessError):
+            runs.start_run(submission_id, dict(), user2)
+
+    def test_get_run(self, tmpdir):
+        """Test retrieving a run."""
+        runs, submissions, users, benchmark = self.init(str(tmpdir))
+        # Get handle for USER_1
+        user = users.login_user(USER_1, USER_1)
+        # Create new submission with a single member
+        s = submissions.create_submission(
+            benchmark_id=benchmark.identifier,
+            name='A',
+            user=user
+        )
+        submission_id = s[labels.ID]
+        # Start a new run. The resulting run is expected to be in pending state.
+        r = runs.start_run(submission_id, dict(), user)
+        util.validate_doc(doc=r, mandatory_labels=RUN_PENDING)
+        serialize.validate_links(r, RELS_ACTIVE)
+        run_id = r[labels.ID]
+        r = runs.get_run(run_id=run_id, user=user)
+        util.validate_doc(doc=r, mandatory_labels=RUN_PENDING)
+        serialize.validate_links(r, RELS_ACTIVE)
+        # Error when trying to access a run without being a submission member
+        user2 = users.login_user(USER_2, USER_2)
+        with pytest.raises(err.UnauthorizedAccessError):
+            runs.get_run(run_id=run_id, user=user2)
+
+    def test_list_runs(self, tmpdir):
+        """Test retrieving a list of runs for a submission."""
+        runs, submissions, users, benchmark = self.init(str(tmpdir))
+        # Get handle for USER_1
+        user = users.login_user(USER_1, USER_1)
+        # Create new submission with a single member
+        s = submissions.create_submission(
+            benchmark_id=benchmark.identifier,
+            name='A',
+            user=user
+        )
+        submission_id = s[labels.ID]
+        # Start a new run. The resulting run is expected to be in pending state.
+        runs.start_run(submission_id, dict(), user)
+        r = runs.list_runs(submission_id=submission_id, user=user)
+        util.validate_doc(doc=r, mandatory_labels=RUN_LISTING)
+        serialize.validate_links(r, RELS_LISTING)
+        assert len(r[labels.RUNS]) == 1
+        util.validate_doc(doc=r[labels.RUNS][0], mandatory_labels=RUN_LABELS)
+        serialize.validate_links(r[labels.RUNS][0], RELS_ACTIVE)
+        # Start a new run in running state.
+        runs.engine.backend.state = StatePending().start()
+        runs.start_run(submission_id, dict(), user)
+        r = runs.list_runs(submission_id=submission_id, user=user)
+        assert len(r[labels.RUNS]) == 2
+        # Start a new run in error.
+        runs.engine.backend.state = StatePending().start().error(['Error'])
+        runs.start_run(submission_id, dict(), user)
+        r = runs.list_runs(submission_id=submission_id, user=user)
+        assert len(r[labels.RUNS]) == 3
+        # Error when trying to list runs without being a submission member
+        user2 = users.login_user(USER_2, USER_2)
+        with pytest.raises(err.UnauthorizedAccessError):
+            runs.list_runs(submission_id=submission_id, user=user2)
